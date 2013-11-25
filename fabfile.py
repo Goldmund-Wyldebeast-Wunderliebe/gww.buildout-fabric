@@ -5,6 +5,7 @@ from fabric.contrib.files import exists
 
 # env.user = 'app-ha-acc'
 # env.hosts = ('46.22.180.90', )
+from helpers import get_application, get_environment, get_instance_ports
 
 env.subsite_urls = dict(
     nuffic='http://localhost:{0}/nuffic-site/nuffic/',
@@ -20,21 +21,6 @@ env.buildouts = dict(
 nuffic_modules = ('nuffic.theme', 'Products.NufficATContent')
 han_modules = ('nuffic.theme', 'Products.NufficATContent', 'nuffic.han.content')
 
-def get_environment():
-    env = run('env | grep ENVIRONMENT')
-    print env
-    if env:
-        return env.replace('ENVIRONMENT=', '')
-
-def get_application():
-    app = run('env | grep APPLICATION')
-    if app:
-        return app.replace('APPLICATION=', '')
-
-def get_instance_ports():
-    env = get_environment()
-    ports = run('cat current/{0}-settings.cfg |grep "instance[0-9]-port"'.format(env))
-    return [int(x.split('=')[1].lstrip()) for x in ports.replace('\r', '').split('\n')]
 
 def modules():
     app = get_application()
@@ -43,22 +29,18 @@ def modules():
     elif app == 'ha':
         return han_modules
 
-
 def update_here():
     for m in modules:
         with lcd('src/{0}'.format(m)):
             local('git pull')
 
 def pull_modules():
-    app_env = get_environment()
-
-    for m in modules():    
+    for m in modules():
         print 'Updating {0}'.format(m)
         with cd('current/src/{0}'.format(m)):
             run('git pull')
 
 def restart_instances():
-    app_env = get_environment()
     app = get_application()
 
     instance_ports = get_instance_ports()        
@@ -116,3 +98,10 @@ def deploy_buildout():
 def update_modules():
     pull_modules()
     restart_instances()
+
+def test_connection():
+    print u'Testing fabric connection for {0} on {1}'.format(env.user, env.host)
+    run('uname -a')
+    run('whoami')
+    run('ls -l')
+

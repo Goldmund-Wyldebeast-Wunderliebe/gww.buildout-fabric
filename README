@@ -1,3 +1,75 @@
 Nuffic tools
 ============
 
+This module contains a Fabric script with several functions for releasing and
+deploying to Nuffic acceptance and production.
+
+Bootstrapping Fabric
+--------------------
+
+To get started with Fabric first we need virtualenv, we will create one in the
+nuffic-tools directory
+
+    # virtualenv .
+
+Activate virtualenv and install requirements via Pip
+
+    # . ./bin/activate
+    # pip install -r requirements.txt
+
+Fabric commands
+---------------
+
+test_connection
+    Runs a few harmless commands on the remote server to check the connection
+
+pull_modules
+    Used on acceptance to pull development modules.
+
+restart_instances
+    Restarts all instances in the current buildout. After restarting an instance
+    the script waits until the instance is up, it then continues restarting
+    other instances.
+
+update_modules
+    This script first call *pull_modules* and then *restart_instances*.
+
+deploy_buildout
+    This script handles the steps which are executed on the production Appie's
+     to deploy a new buildout. A fresh buildout is cloned and run, instances
+     are restarted and finally a switch is made between the old buildout and the
+     new one.
+
+Prepairing Nuffic Appie environments
+------------------------------------
+
+All Nuffic portals are contained in Appie environments. Appie users are
+'locked' accounts by default. If a user is locked two exclamation marks can
+be seen in /etc/shadow
+
+This user is locked:
+
+    # sudo cat /etc/shadow | grep app-nuffic-acc
+    app-nuffic-acc:!!:15558:0:99999:7:::
+
+Unlock the user:
+
+    # sudo passwd -f -u app-nuffic-acc
+
+Now we need to add your SSH public key to the authorized keys of the appie
+user. If no .ssh directory of authorized_keys file is present create the ssh
+dir structure by hand. Please keep in mind file permissions on ssh dir/files
+must not be world/group readable and writeable.
+
+    # appie become nuffic acc
+    # vi .ssh/authorized_keys  # Add your public key
+
+Now check if you connect via SSH:
+
+    # ssh app-nuffic-acc@nuffic-acc
+
+If the SSH connection is working, Fabric is also working. Use the following
+command to double check:
+
+    # fab -H nuffic-acc -u app-nuffic-acc test_connection
+
