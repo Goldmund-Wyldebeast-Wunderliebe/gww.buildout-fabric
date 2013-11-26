@@ -26,21 +26,22 @@ paths.
 Fabric tasks
 ------------
 
-Usage: fab <task name>
-
-Examples:
-
-    # fab test_connection
-    # fab prepare_release:nuffic
+Usage: fab -H <remote host> -u <appie user> <task name>
 
 test_connection
     Runs a few harmless commands on the remote server to check the connection
 
+    Usage:
+    # fab -H <remote host> -u <appie user> test_connection
+
 pull_modules
     Used on acceptance to pull development get_modules.
 
+    Usage:
+    # fab -H <remote host> -u <appie user> pull_modules
+
 restart_instances
-    Restarts all instances in the current buildout. After restarting an instance
+    Restarts all instances in the remote buildout. After restarting an instance
     the script waits until the instance is up, it then continues restarting
     other instances.
 
