@@ -23,6 +23,10 @@ paths.
     # cp example_config.py config.py
     # vim config.py  # Adjust config to your local environment
 
+Add your SSH public key to the remote appie user, see paragraph 'Prepairing
+Nuffic Appie environments'  below.
+
+
 Fabric tasks
 ------------
 
