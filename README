@@ -17,14 +17,27 @@ Activate virtualenv and install requirements via Pip
     # . ./bin/activate
     # pip install -r requirements.txt
 
-Fabric commands
----------------
+Create config file, used for storing active Python modules and local buildout
+paths.
+
+    # cp example_config.py config.py
+    # vim config.py  # Adjust config to your local environment
+
+Fabric tasks
+------------
+
+Usage: fab <task name>
+
+Examples:
+
+    # fab test_connection
+    # fab prepare_release:nuffic
 
 test_connection
     Runs a few harmless commands on the remote server to check the connection
 
 pull_modules
-    Used on acceptance to pull development modules.
+    Used on acceptance to pull development get_modules.
 
 restart_instances
     Restarts all instances in the current buildout. After restarting an instance
@@ -32,13 +45,20 @@ restart_instances
     other instances.
 
 update_modules
-    This script first call *pull_modules* and then *restart_instances*.
+    This task first calls *pull_modules* and then *restart_instances*.
+
+prepare_release:<app-env>
+    Adds production git tag to active Python modules, and configures prd-sources
+    with same git tag.
 
 deploy_buildout
-    This script handles the steps which are executed on the production Appie's
-     to deploy a new buildout. A fresh buildout is cloned and run, instances
-     are restarted and finally a switch is made between the old buildout and the
-     new one.
+    This script handles the steps (1) which are executed on the production Appie's
+    to deploy a new buildout. A fresh buildout is cloned and run, instances
+    are restarted and finally a switch is made between the old buildout and the
+    new one.
+
+1. https://intranet.gw20e.com/projects/nuffic/new-prd-release
+
 
 Prepairing Nuffic Appie environments
 ------------------------------------
