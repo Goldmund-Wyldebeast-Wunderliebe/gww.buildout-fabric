@@ -47,7 +47,6 @@ def wget(url, retry=4, sleep=30):
     """ Multiple wget requests with a timeout """
 
     i = 0
-
     while i < retry:
 
         if i != 0:
@@ -60,6 +59,7 @@ def wget(url, retry=4, sleep=30):
             break
 
         i += 1
+
 def replace_tag(tag, lines):
     last = lines[-1]
 

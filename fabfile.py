@@ -82,10 +82,8 @@ def restart_instances():
 
     for i, port in enumerate(instance_ports):
         run('~/current/bin/supervisorctl restart instance{0}'.format(i))
-        print 'Waiting for instance{0} http connection...'.format(i)
         url = env.subsite_urls.get(app)
         url = url.format(port)
-
         wget(url)
 
 def deploy_buildout():

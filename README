@@ -28,17 +28,23 @@ Fabric tasks
 
 Usage: fab -H <remote host> -u <appie user> <task name>
 
+Examples:
+
+    Restart connection on nuffic-acc:
+    # fab -H nuffic-acc -u app-nuffic-acc restart_instances
+
+    Prepare production release locally:
+    # fab -H prepare_release:nuffic
+
 test_connection
     Runs a few harmless commands on the remote server to check the connection
 
     Usage:
-    # fab -H <remote host> -u <appie user> test_connection
+
+    # fab -H nuffic-acc -u app-nuffic-acc test_connection
 
 pull_modules
-    Used on acceptance to pull development get_modules.
-
-    Usage:
-    # fab -H <remote host> -u <appie user> pull_modules
+    Used on acceptance to pull development modules.
 
 restart_instances
     Restarts all instances in the remote buildout. After restarting an instance
@@ -51,6 +57,8 @@ update_modules
 prepare_release:<app-env>
     Adds production git tag to active Python modules, and configures prd-sources
     with same git tag.
+
+    This is a local task, no remote host or user is needed!
 
 deploy_buildout
     This script handles the steps (1) which are executed on the production Appie's
