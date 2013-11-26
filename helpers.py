@@ -49,9 +49,8 @@ def wget(url, retry=4, sleep=30):
     i = 0
     while i < retry:
 
-        if i != 0:
-            print '[{0}/{1}] Sleeping for {2} secs before retrying'.format(i+1, retry, sleep)
-            time.sleep(sleep)
+        print '[{0}/{1}] Sleeping for {2} secs before trying'.format(i+1, retry, sleep)
+        time.sleep(sleep)
 
         rv = run('wget -SO- -O /dev/null {}'.format(url), warn_only=True)
 
