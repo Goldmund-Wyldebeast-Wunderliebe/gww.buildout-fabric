@@ -49,13 +49,13 @@ def wget(url, retry=4, sleep=30):
     i = 0
     while i < retry:
 
+        rv = run('wget -SO- -O /dev/null {}'.format(url), warn_only=True)
+        if '200 OK' in rv:
+            break
+
         print '[{0}/{1}] Sleeping for {2} secs before trying'.format(i+1, retry, sleep)
         time.sleep(sleep)
 
-        rv = run('wget -SO- -O /dev/null {}'.format(url), warn_only=True)
-
-        if 'HTTP/1.1 200 OK' in rv:
-            break
 
         i += 1
 
