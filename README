@@ -102,4 +102,3 @@ command to double check:
 
     # fab -H nuffic-acc -u app-nuffic-acc test_connection
 
-
