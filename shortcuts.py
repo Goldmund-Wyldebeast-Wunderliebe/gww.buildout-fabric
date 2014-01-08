@@ -7,18 +7,14 @@ from tasks import pull_modules, restart_instances, prepare_release, deploy_build
 @task
 @hosts('app-nuffic-acc@46.22.180.90')
 def acc_nuffic_update():
-    """ Update Nuffic acceptance environment using pull_modules and
-    restart_instances tasks.
-    """
+    """ Update app-nuffic-acc using pull_modules and restart_instances tasks """
     pull_modules()
     restart_instances()
 
 @task
 @hosts('app-ha-acc@46.22.180.90')
 def acc_ha_update():
-    """ Update HAn acceptance environment using pull_modules
-      and restart_instances tasks.
-    """
+    """ Update app-ha-acc using pull_modules and restart_instances tasks """
     pull_modules()
     restart_instances()
 
@@ -30,7 +26,7 @@ def prd_nuffic_release_tag():
 @task
 @hosts('app-nuffic-prd@46.22.180.89')
 def prd_nuffic_release_deploy():
-    """ Nuffic prd, deploy a new buildout in the releases directory """
+    """ Deploy a new buildout for app-nuffic-prd in the releases directory """
     deploy_buildout()
 
 @task
@@ -41,5 +37,5 @@ def prd_ha_release_tag():
 @task
 @hosts('app-ha-prd@46.22.180.89')
 def prd_ha_release_deploy():
-    """ HA prd, deploy a new buildout in the releases directory """
+    """ Deploy a new buildout for app-ha-prd in the releases directory """
     deploy_buildout()
