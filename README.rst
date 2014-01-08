@@ -15,12 +15,14 @@ nuffic-tools directory
 Activate virtualenv and install requirements via Pip
 
     # . ./bin/activate
+
     # pip install -r requirements.txt
 
 Create config file, used for storing active Python modules and local buildout
 paths.
 
     # cp example_config.py config.py
+
     # vim config.py  # Adjust config to your local environment
 
 Add your SSH public key to the remote appie user, see paragraph 'Prepairing
@@ -66,10 +68,10 @@ Usage: fab -H <remote host> -u <appie user> <task name>
 
 Examples:
 
-    Restart connection on nuffic-acc:
+Restart connection on nuffic-acc:
     # fab -H nuffic-acc -u app-nuffic-acc restart_instances
 
-    Prepare production release locally:
+Prepare production release locally:
     # fab -H prepare_release:nuffic
 
 test_connection
@@ -108,6 +110,7 @@ be seen in /etc/shadow
 This user is locked:
 
     # sudo cat /etc/shadow | grep app-nuffic-acc
+
     app-nuffic-acc:!!:15558:0:99999:7:::
 
 Unlock the user:
@@ -120,6 +123,7 @@ dir structure by hand. Please keep in mind file permissions on ssh dir/files
 must not be world/group readable and writeable.
 
     # appie become nuffic acc
+
     # vi .ssh/authorized_keys  # Add your public key
 
 Now check if you connect via SSH:
