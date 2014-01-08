@@ -124,6 +124,7 @@ def deploy_buildout():
             for i, port in enumerate(instance_ports):
                 run('~/current/bin/supervisorctl stop instance{0}'.format(i))
                 run('./bin/supervisorctl start instance{0}'.format(i))
+                time.sleep(10)
 
                 url = env.subsite_urls.get(app)
                 url = url.format(port)

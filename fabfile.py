@@ -1,5 +1,6 @@
 from fabric.api import env
 
+# import tasks and shorts so they are active in Fabric
 from tasks import *
 from shortcuts import *
 

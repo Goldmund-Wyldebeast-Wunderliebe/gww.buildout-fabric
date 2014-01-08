@@ -29,6 +29,7 @@ Nuffic Appie environments'  below.
 
 Fabric shortcuts
 ----------------
+Shortcuts for running one or more tasks on a specific Nuffic environment
 
 Usage: fab  <task name>
 
