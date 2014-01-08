@@ -1,4 +1,5 @@
 import time
+from example_config import buildout_tag
 from fabric.api import cd, env, local, lcd, run, sudo, settings
 from fabric.contrib.files import exists
 
@@ -11,8 +12,8 @@ env.subsite_urls = dict(
 )
 
 env.buildouts = dict(
-    nuffic='git@git.gw20e.com:buildout-nuffic.git',
-    ha='git@git.gw20e.com:buildout-nuffic-han.git'
+    nuffic='git@git.gw20e.com:Nuffic/buildout-nuffic.git',
+    ha='git@git.gw20e.com:Nuffic/buildout-nuffic-han.git'
 )
 
 
@@ -22,7 +23,7 @@ def update_here():
             local('git pull')
 
 def prepare_release(app_env):
-    """ Tag all get_modules for local buildout path """
+    """ Tag all Nuffic/Plone modules in get_modules located in buildout path """
 
     def git_tag(tag):
         local('git commit -am "tagging production release"')
@@ -101,7 +102,13 @@ def deploy_buildout():
 
         with cd(buildout_dir):
             if not exists('bin/buildout'):
-                run('git checkout responsive')
+                if app_env == 'prd':
+                    tag = tag
+                else:
+                    tag = buildout_tag
+
+                run('git checkout {}'.format(tag))
+
                 run('cp ~/current/{0}-settings.cfg .'.format(app_env))
                 run('~/bin/python bootstrap.py -c buildout-{0}.cfg'.format(app_env))
 
@@ -139,10 +146,13 @@ def deploy_buildout():
         run('~/current/bin/supervisorctl start crashmail')
 
 def update_modules():
+    """ Runs pull_modules and restart_instances """
     pull_modules()
     restart_instances()
 
 def test_connection():
+    """ Task to test if the connection is working """
+
     print u'Testing fabric connection for {0} on {1}'.format(env.user, env.host)
     run('uname -a')
     run('whoami')

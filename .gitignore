@@ -37,3 +37,4 @@ nosetests.xml
 # Other
 .Python
 include
+config
