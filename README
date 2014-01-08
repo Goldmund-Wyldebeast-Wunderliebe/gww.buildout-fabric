@@ -27,6 +27,37 @@ Add your SSH public key to the remote appie user, see paragraph 'Prepairing
 Nuffic Appie environments'  below.
 
 
+Fabric shortcuts
+----------------
+
+Usage: fab  <task name>
+
+Examples:
+
+    Update Nuffic acceptance
+    # fab update_nuffic_acc
+
+acc_nuffic_update
+    Update Nuffic acceptance environment using *pull_modules* and
+    *restart_instances* tasks.
+
+acc_ha_update
+    Update Holland Alumni network acceptance environment using *pull_modules*
+    and *restart_instances* tasks.
+
+prd_nuffic_release_tag
+    Tag git modules in local Nuffic buildout for deployment
+
+prd_nuffic_release_deploy
+    Deploy a new buildout in the releases directory for app-nuffic-prd
+
+prd_ha_release_tag
+    Tag git modules in local HA buildout for deployment
+
+prd_ha_release_deploy
+    Deploy a new buildout in the releases directory for app-ha-prd
+
+
 Fabric tasks
 ------------
 
@@ -44,15 +75,12 @@ test_connection
     Runs a few harmless commands on the remote server to check the connection
 
 pull_modules
-    Used on acceptance to pull development modules.
+    Used on acceptance to pull Git development modules.
 
 restart_instances
     Restarts all instances in the remote buildout. After restarting an instance
     the script waits until the instance is up, it then continues restarting
     other instances.
-
-update_modules
-    This task first calls *pull_modules* and then *restart_instances*.
 
 prepare_release:<app-env>
     Adds production git tag to active Python modules, and configures prd-sources

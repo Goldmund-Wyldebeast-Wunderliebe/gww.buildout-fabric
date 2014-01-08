@@ -1,3 +1,6 @@
+"""
+Nuffic Fabric configuration, copy this file to config.py
+"""
 local_buildouts = dict(
     nuffic='/Users/leong/Projects/buildout-nuffic',
     ha='/Users/leong/Projects/buildout-nuffic-han'
