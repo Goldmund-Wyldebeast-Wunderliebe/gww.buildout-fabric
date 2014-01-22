@@ -37,7 +37,8 @@ Usage: fab  <task name>
 
 Examples:
 
-    Update Nuffic acceptance
+Update Nuffic acceptance
+
     # fab update_nuffic_acc
 
 acc_nuffic_update

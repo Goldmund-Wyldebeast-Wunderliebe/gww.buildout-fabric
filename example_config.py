@@ -1,5 +1,5 @@
 """
-Nuffic Fabric configuration, copy this file to config.py
+Nuffic Fabric configuration, copy this file to config.py for local custimization.
 """
 local_buildouts = dict(
     nuffic='/Users/leong/Projects/buildout-nuffic',
