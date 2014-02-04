@@ -6,6 +6,6 @@ local_buildouts = dict(
     ha='/Users/leong/Projects/buildout-nuffic-han'
 )
 
-buildout_tag = 'responsive'  # used in tasks:deploy_buildout
+buildout_tag = ''  # used in tasks:deploy_buildout
 nuffic_modules = ('nuffic.theme', 'Products.NufficATContent')
 han_modules = ('nuffic.theme', 'Products.NufficATContent', 'nuffic.han.content')

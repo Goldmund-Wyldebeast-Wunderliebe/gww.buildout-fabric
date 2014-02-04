@@ -1,7 +1,10 @@
 """ Specific Fabric tasks """
 
 import time
-from example_config import buildout_tag
+try:
+    from config import buildout_tag
+except:
+    from example_config import buildout_tag
 from fabric.api import task, cd, env, local, lcd, run, sudo, settings
 from fabric.decorators import task, hosts
 from fabric.contrib.files import exists
@@ -29,9 +32,7 @@ def prepare_release(app_env):
     print 'Tagging modules'
     for m in modules:
         with lcd('{0}/src/{1}'.format(buildout_path, m)):
-            local('git checkout master')
             local('''sed -i.org 's/version = .*/version = "{}"/' setup.py'''.format(tag))
-            local('git commit -am "tagging production release"')
             git_tag(tag)
 
     old_settings = '{}/prd-sources.cfg'.format(buildout_path)
@@ -76,6 +77,8 @@ def restart_instances():
         url = env.subsite_urls.get(app)
         url = url.format(port)
         wget(url)
+        time.sleep(30)
+
 
 @task
 def deploy_buildout():
@@ -93,15 +96,18 @@ def deploy_buildout():
 
         with cd(buildout_dir):
             if not exists('bin/buildout'):
-                if app_env == 'prd':
-                    tag = tag
-                else:
-                    tag = buildout_tag
-
-                run('git checkout {}'.format(tag))
 
                 run('cp ~/current/{0}-settings.cfg .'.format(app_env))
                 run('~/bin/python bootstrap.py -c buildout-{0}.cfg'.format(app_env))
+
+            if app_env == 'prd':
+                tag = tag
+            else:
+                tag = buildout_tag
+
+            run('git fetch')
+            run('git checkout {}'.format(tag))
+            run('git pull', warn_only=True)
 
             run('./bin/buildout -c buildout-{0}.cfg'.format(app_env))
 
@@ -124,7 +130,7 @@ def deploy_buildout():
             for i, port in enumerate(instance_ports):
                 run('~/current/bin/supervisorctl stop instance{0}'.format(i))
                 run('./bin/supervisorctl start instance{0}'.format(i))
-                time.sleep(10)
+                time.sleep(30)
 
                 url = env.subsite_urls.get(app)
                 url = url.format(port)

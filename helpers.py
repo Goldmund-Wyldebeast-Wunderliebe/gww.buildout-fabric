@@ -20,6 +20,8 @@ def get_modules(app=None):
     elif app == 'ha':
         return han_modules
 
+    raise ValueError('{0}:get_modules cannot find app "{1}"'.format(__name__, app))
+
 def get_environment():
     """ Returns environment string; acc/prd"""
     env = run('env | grep ENVIRONMENT')
