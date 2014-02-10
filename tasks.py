@@ -140,8 +140,8 @@ def deploy_buildout():
     run('rm ~/current')
     run('ln -s releases/{0} current'.format(buildout_dir))
 
-    if app_env == 'prd':
-        run('~/current/bin/supervisorctl start crashmail')
+    #if app_env == 'prd':
+    #    run('~/current/bin/supervisorctl start crashmail')
 
 @task
 def test_connection():
