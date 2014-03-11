@@ -30,6 +30,12 @@ def prd_nuffic_release_deploy():
     deploy_buildout()
 
 @task
+@hosts('app-nuffic-tst@192.168.66.85')
+def tst_nuffic_release_deploy():
+    """ Deploy a new buildout for app-nuffic-prd in the releases directory """
+    deploy_buildout()
+
+@task
 def prd_ha_release_tag():
     """ Locally tag modules for HAn prd env """
     prepare_release('ha')

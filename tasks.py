@@ -89,6 +89,8 @@ def deploy_buildout():
     buildout_dir = fmt_date()
     tag = 'prd-{}'.format(fmt_date())
 
+    if not exists('releases'):
+        run('mkdir releases')
     with cd('releases'):
 
         if not exists(buildout_dir):
@@ -97,7 +99,14 @@ def deploy_buildout():
         with cd(buildout_dir):
             if not exists('bin/buildout'):
 
-                run('cp ~/current/{0}-settings.cfg .'.format(app_env))
+                if exists('~/current/{0}-settings.cfg .'.format(app_env)):
+                    run('cp ~/current/{0}-settings.cfg .'.format(app_env))
+                else:
+                    try:
+                        run('cp ~/{0}-settings.cfg .'.format(app_env))
+                    except:
+                        print 'You need to provide %s file in home folder to create initial buildout'%'~/current/{0}-settings.cfg .'.format(app_env)
+                        raise
                 run('~/bin/python bootstrap.py -c buildout-{0}.cfg'.format(app_env))
 
             if app_env == 'prd':
@@ -122,21 +131,23 @@ def deploy_buildout():
                 run('~/current/bin/supervisorctl stop crashmail')
                 run('./bin/supervisorctl stop crashmail')
 
-            run('~/current/bin/supervisorctl stop haproxy;')
-            run('./bin/supervisorctl start haproxy')
+            if exists('~/current/bin/supervisorctl'):
+                run('~/current/bin/supervisorctl stop haproxy;')
+                run('./bin/supervisorctl start haproxy')
 
-            instance_ports = get_instance_ports()
+                instance_ports = get_instance_ports()
 
-            for i, port in enumerate(instance_ports):
-                run('~/current/bin/supervisorctl stop instance{0}'.format(i))
-                run('./bin/supervisorctl start instance{0}'.format(i))
-                time.sleep(30)
+                for i, port in enumerate(instance_ports):
+                    run('~/current/bin/supervisorctl stop instance{0}'.format(i))
+                    run('./bin/supervisorctl start instance{0}'.format(i))
+                    time.sleep(30)
 
-                url = env.subsite_urls.get(app)
-                url = url.format(port)
-                wget(url)
+                    url = env.subsite_urls.get(app)
+                    url = url.format(port)
+                    wget(url)
 
-    run('~/current/bin/supervisorctl shutdown')
+    if exists('~/current/bin/supervisorctl'):
+        run('~/current/bin/supervisorctl shutdown')
     run('rm ~/current')
     run('ln -s releases/{0} current'.format(buildout_dir))
 
