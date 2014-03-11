@@ -39,7 +39,7 @@ Examples:
 
 Update Nuffic acceptance
 
-    # fab update_nuffic_acc
+    # fab acc_nuffic_update 
 
 acc_nuffic_update
     Update Nuffic acceptance environment using *pull_modules* and
