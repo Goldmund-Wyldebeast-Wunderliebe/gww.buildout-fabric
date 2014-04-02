@@ -133,7 +133,7 @@ def switch_buildout():
     buildout_dir = fmt_date()
     tag = 'prd-{}'.format(fmt_date())
 
-    with cd('releases'):
+    with cd('releases/{0}'.format(buildout_dir)):
         
             if exists('./var/supervisord.pid'):
                 run('./bin/supervisorctl shutdown')
