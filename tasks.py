@@ -18,8 +18,10 @@ def prepare_release(app_env):
 
     def git_tag(tag):
         local('git commit -am "tagging production release"')
-        local('git tag -a {} -m "tagged production release"'.format(tag))
-        local('git push --tags')
+        # TODO: check if tag if exists, if so silently fail
+        # http://stackoverflow.com/questions/3418674/bash-shell-script-function-to-verify-git-tag-or-commit-exists-and-has-been-pushe
+        local('git tag -af {} -m "tagged production release"'.format(tag))
+        local('git push --tags -f')
         local('git push')
 
     if not local_buildouts:
@@ -29,8 +31,11 @@ def prepare_release(app_env):
     modules = get_modules(app_env)
     tag = 'prd-{}'.format(fmt_date())
 
-    print 'Tagging modules'
+   
+
     for m in modules:
+        print 'Tagging module: {0}'.format(m)
+        # TODO: check if tag if exists, if so silently fail
         with lcd('{0}/src/{1}'.format(buildout_path, m)):
             local('''sed -i.org 's/version = .*/version = "{}"/' setup.py'''.format(tag))
             git_tag(tag)
@@ -103,7 +108,7 @@ def deploy_buildout():
                     run('cp ~/current/{0}-settings.cfg .'.format(app_env))
                 else:
                     try:
-                        run('cp ~/{0}-settings.cfg .'.format(app_env))
+                        run('cp ~/current/{0}-settings.cfg .'.format(app_env))
                     except:
                         print 'You need to provide %s file in home folder to create initial buildout'%'~/current/{0}-settings.cfg .'.format(app_env)
                         raise
