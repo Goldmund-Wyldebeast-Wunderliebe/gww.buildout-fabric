@@ -18,7 +18,7 @@ def prepare_release(app_env):
 
     def git_tag(tag):
         local('git commit -am "tagging production release"')
-        # TODO: check if tag if exists, if so silently fail
+        # TODO: check if tag if exists, if so silently fail/continue
         # http://stackoverflow.com/questions/3418674/bash-shell-script-function-to-verify-git-tag-or-commit-exists-and-has-been-pushe
         local('git tag -af {} -m "tagged production release"'.format(tag))
         local('git push --tags -f')
@@ -35,7 +35,7 @@ def prepare_release(app_env):
 
     for m in modules:
         print 'Tagging module: {0}'.format(m)
-        # TODO: check if tag if exists, if so silently fail
+        # TODO: check if tag if exists, if so silently fail/continue
         with lcd('{0}/src/{1}'.format(buildout_path, m)):
             local('''sed -i.org 's/version = .*/version = "{}"/' setup.py'''.format(tag))
             git_tag(tag)
@@ -166,8 +166,6 @@ def switch_buildout():
     run('rm ~/current')
     run('ln -s releases/{0} current'.format(buildout_dir))
 
-    #if app_env == 'prd':
-    #    run('~/current/bin/supervisorctl start crashmail')
 
 @task
 def test_connection():
