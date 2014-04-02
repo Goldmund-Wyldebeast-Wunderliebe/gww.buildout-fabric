@@ -94,9 +94,12 @@ prepare_release:<app-env>
 
 deploy_buildout
     This script handles the steps (1) which are executed on the production Appie's
-    to deploy a new buildout. A fresh buildout is cloned and run, instances
-    are restarted and finally a switch is made between the old buildout and the
-    new one.
+    to deploy a new buildout. A fresh buildout is cloned and run. Switching can 
+    be done in the next task.
+
+switch_buildout
+    The current buildout will be switched with the new one. Instances are restarted 
+    and finally a switch is made between the old buildout and the  new one.
 
 1. https://intranet.gw20e.com/projects/nuffic/new-prd-release
 

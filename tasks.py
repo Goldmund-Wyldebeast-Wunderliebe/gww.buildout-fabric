@@ -77,7 +77,7 @@ def restart_instances():
         url = env.subsite_urls.get(app)
         url = url.format(port)
         wget(url)
-        time.sleep(30)
+        time.sleep(120)
 
 
 @task
@@ -120,6 +120,16 @@ def deploy_buildout():
 
             run('./bin/buildout -c buildout-{0}.cfg'.format(app_env))
 
+@task
+def switch_buildout():
+    app = get_application()
+    app_env = get_environment()
+
+    buildout_dir = fmt_date()
+    tag = 'prd-{}'.format(fmt_date())
+
+    with cd('releases'):
+        
             if exists('./var/supervisord.pid'):
                 run('./bin/supervisorctl shutdown')
                 time.sleep(5)
