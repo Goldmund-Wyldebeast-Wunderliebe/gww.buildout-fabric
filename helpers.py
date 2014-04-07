@@ -2,25 +2,9 @@ import time
 from datetime import datetime
 from fabric.api import cd, env, local, lcd, run, sudo, settings
 
-try:
-    from config import nuffic_modules, han_modules, local_buildouts
-except ImportError:
-    nuffic_modules = ('nuffic.theme', 'Products.NufficATContent')
-    han_modules = ('nuffic.theme', 'Products.NufficATContent', 'nuffic.han.content')
-    local_buildouts = None
-
-
-def get_modules(app=None):
+def get_modules():
     """ Returns Python get_modules for appie env """
-    if not app:
-        app = get_application()
-
-    if app == 'nuffic':
-        return nuffic_modules
-    elif app == 'ha':
-        return han_modules
-
-    raise ValueError('{0}:get_modules cannot find app "{1}"'.format(__name__, app))
+    return env.modules
 
 def get_environment():
     """ Returns environment string; acc/prd"""

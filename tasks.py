@@ -1,20 +1,16 @@
 """ Specific Fabric tasks """
 
 import time
-try:
-    from config import buildout_tag
-except:
-    from example_config import buildout_tag
 from fabric.api import task, cd, env, local, lcd, run, sudo, settings
 from fabric.decorators import task, hosts
 from fabric.contrib.files import exists
 
 from helpers import (get_application, get_environment, get_instance_ports,
-    wget, fmt_date, replace_tag, get_modules, local_buildouts)
+    wget, fmt_date, replace_tag, get_modules)
 
 @task
-def prepare_release(app_env):
-    """ Tag all Nuffic/Plone modules in get_modules located in buildout path """
+def prepare_release():
+    """ Tag all modules in get_modules located in buildout path """
 
     def git_tag(tag):
         local('git commit -am "tagging production release"')
@@ -24,10 +20,8 @@ def prepare_release(app_env):
         local('git push --tags -f')
         local('git push')
 
-    if not local_buildouts:
-        raise ValueError('Please use config.py and configure local_buildouts')
-
-    buildout_path = local_buildouts.get(app_env)
+    # TODO: find out CWD for buildout_path
+    buildout_path = ''
     modules = get_modules(app_env)
     tag = 'prd-{}'.format(fmt_date())
 
@@ -79,8 +73,7 @@ def restart_instances():
 
     for i, port in enumerate(instance_ports):
         run('~/current/bin/supervisorctl restart instance{0}'.format(i))
-        url = env.subsite_urls.get(app)
-        url = url.format(port)
+        url = env.site_url
         wget(url)
         time.sleep(120)
 
@@ -124,7 +117,6 @@ def deploy_buildout(tag=None):
 
 @task
 def switch_buildout():
-    app = get_application()
     app_env = get_environment()
 
     buildout_dir = fmt_date()
@@ -154,8 +146,7 @@ def switch_buildout():
                     run('./bin/supervisorctl start instance{0}'.format(i))
                     time.sleep(30)
 
-                    url = env.subsite_urls.get(app)
-                    url = url.format(port)
+                    url = env.site_url
                     wget(url)
 
     if exists('~/current/bin/supervisorctl'):
