@@ -19,10 +19,15 @@ def get_application():
     if app:
         return app.replace('APPLICATION=', '')
 
-def get_instance_ports():
+def get_instance_ports(old=False):
     """ Reads instance ports from buildout settings """
     env = get_environment()
-    ports = run('cat ~/current/{0}-settings.cfg |grep "instance[0-9]-port"'.format(env))
+    
+    if not old:
+        ports = run('cat ~/current/{0}-settings.cfg | grep -A1 "instance[0-9]" | grep http-address'.format(env))
+    else:
+        ports = run('cat ~/current/{0}-settings.cfg |grep "instance[0-9]-port"'.format(env))
+
     return [int(x.split('=')[1].lstrip()) for x in ports.replace('\r', '').split('\n')]
 
 def fmt_date():

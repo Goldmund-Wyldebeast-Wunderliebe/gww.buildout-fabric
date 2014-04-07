@@ -73,7 +73,7 @@ def restart_instances():
 
     for i, port in enumerate(instance_ports):
         run('~/current/bin/supervisorctl restart instance{0}'.format(i))
-        url = env.site_url
+        url = env.site_url.format(port)
         wget(url)
         time.sleep(120)
 
@@ -130,10 +130,10 @@ def switch_buildout(tag=None):
         
             if exists('./var/supervisord.pid'):
                 run('./bin/supervisorctl shutdown')
-                time.sleep(5)
+                time.sleep(10)
 
             run('./bin/supervisord')
-            time.sleep(10)
+            time.sleep(15)
 
             if app_env == 'prd':
                 run('~/current/bin/supervisorctl stop crashmail')
@@ -150,7 +150,7 @@ def switch_buildout(tag=None):
                     run('./bin/supervisorctl start instance{0}'.format(i))
                     time.sleep(30)
 
-                    url = env.site_url
+                    url = env.site_url.format(port)
                     wget(url)
 
     if exists('~/current/bin/supervisorctl'):

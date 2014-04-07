@@ -4,6 +4,18 @@ Buildout fabric tools
 This module contains a Fabric script with several functions for releasing and
 deploying to Plone buildouts.
 
+Include this fabric config in an existing buildout
+--------------------------------------------------
+
+Note: this is already done in the recent buildout-templates.
+
+Add this repository as a git submodule:
+
+    cd {buildout-dir}
+    git submodule add -f  git@git.gw20e.com:gww/fabric-buildout.git fabric_lib
+    cp fabric_lib/example_fabfile.py fabfile.py
+
+
 Bootstrapping Fabric
 --------------------
 
