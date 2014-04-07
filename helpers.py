@@ -27,7 +27,7 @@ def get_instance_ports():
 
 def fmt_date():
     now = datetime.now()
-    return '{0}-{1}-{2}'.format(now.day, now.month, now.year)
+    return now.strftime('%Y-%m-%d')
 
 def wget(url, retry=4, sleep=30):
     """ Multiple wget requests with a timeout """
