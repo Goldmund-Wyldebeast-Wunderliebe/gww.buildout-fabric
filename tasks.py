@@ -158,6 +158,31 @@ def switch_buildout(tag=None):
     run('rm ~/current')
     run('ln -s releases/{0} current'.format(buildout_dir))
 
+@task
+def get_master_slave(quiet=True):
+
+    # find out who is the master server
+    if type(env.prd_hosts) != tuple:
+        raise ValueError(u'It seems this setup does not have multiple prd servers')
+
+    cluster = dict(master=None, slave=None)    
+
+    for login in env.prd_hosts:
+        with settings(host_string=login):
+            output = run(
+                'cat /proc/drbd | grep \'Primary/Secondary\'', 
+                warn_only=True, 
+                quiet=quiet
+            )
+            if output:
+                cluster['master'] = login
+            else:
+                cluster['slave'] = login
+
+    if not (cluster['master'] or cluster['slave']):
+        raise ValueError(u'No master and/or slave server found!')
+
+    return cluster
 
 @task
 def test_connection():

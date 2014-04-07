@@ -4,6 +4,8 @@ from fabric.decorators import task, hosts
 from fabric_lib.tasks import test_connection, pull_modules, restart_instances, deploy_buildout, switch_buildout
 
 # docs in fabric_lib/README.rst
+# To setup Fabric first read how to include fabric into an existing buildout
+# and how to bootstrap Fabric.
 
 appie_env = 'sbg'
 env.modules = ('sbg.theme')

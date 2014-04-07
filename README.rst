@@ -83,7 +83,7 @@ restart_instances
     the script waits until the instance is up, it then continues restarting
     other instances.
 
-prepare_release:<app-env>
+prepare_release
     Adds production git tag to active Python modules, and configures prd-sources
     with same git tag.
 
