@@ -86,13 +86,15 @@ def restart_instances():
 
 
 @task
-def deploy_buildout():
+def deploy_buildout(tag=None):
     """ Deploys a new buildout """
     app = get_application()
     app_env = get_environment()
 
     buildout_dir = fmt_date()
-    tag = 'prd-{}'.format(fmt_date())
+
+    if not tag:
+        tag = 'prd-{}'.format(fmt_date())
 
     if not exists('releases'):
         run('mkdir releases')
@@ -113,11 +115,6 @@ def deploy_buildout():
                         print 'You need to provide %s file in home folder to create initial buildout'%'~/current/{0}-settings.cfg .'.format(app_env)
                         raise
                 run('~/bin/python bootstrap.py -c buildout-{0}.cfg'.format(app_env))
-
-            if app_env == 'prd':
-                tag = tag
-            else:
-                tag = buildout_tag
 
             run('git fetch')
             run('git checkout {}'.format(tag))

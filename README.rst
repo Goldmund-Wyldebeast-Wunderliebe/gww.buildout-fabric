@@ -119,7 +119,7 @@ This user is locked:
 
 Unlock the user:
 
-    # sudo passwd -f -u app-nuffic-acc
+    # sudo passwd -u app-nuffic-acc
 
 Now we need to add your SSH public key to the authorized keys of the appie
 user. If no .ssh directory of authorized_keys file is present create the ssh
