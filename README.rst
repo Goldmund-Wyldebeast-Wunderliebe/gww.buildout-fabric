@@ -1,35 +1,27 @@
-Nuffic tools
-============
+Buildout fabric tools
+=====================
 
 This module contains a Fabric script with several functions for releasing and
-deploying to Nuffic acceptance and production.
+deploying to Plone buildouts.
 
 Bootstrapping Fabric
 --------------------
 
-To get started with Fabric first we need virtualenv, we will create one in the
-nuffic-tools directory
+Fabric is included in the buildout:
 
-    # virtualenv .
+    # ./bin/fab --version
+    Fabric 1.8.3
+    Paramiko 1.12.3
 
-Activate virtualenv and install requirements via Pip
+Modify the fabfile.py in the buildout and adjust the settings:
 
-    # . ./bin/activate
+    # vim {buildout-dir}/fabfile.py
 
-    # pip install -r requirements.txt
-
-Create config file, used for storing active Python modules and local buildout
-paths.
-
-    # cp example_config.py config.py
-
-    # vim config.py  # Adjust config to your local environment
-
-Add your SSH public key to the remote appie user, see paragraph 'Prepairing
+Add your SSH public key to the remote appie user, see paragraph 'Preparing
 Nuffic Appie environments'  below.
 
 
-Fabric shortcuts
+Fabric example shortcuts
 ----------------
 Shortcuts for running one or more tasks on a specific Nuffic environment
 
@@ -39,27 +31,20 @@ Examples:
 
 Update Nuffic acceptance
 
-    # fab acc_nuffic_update 
+    # fab acc_test 
+
+acc_test
+    Test the connection with acceptance environment
 
 acc_nuffic_update
     Update Nuffic acceptance environment using *pull_modules* and
     *restart_instances* tasks.
-
-acc_ha_update
-    Update Holland Alumni network acceptance environment using *pull_modules*
-    and *restart_instances* tasks.
 
 prd_nuffic_release_tag
     Tag git modules in local Nuffic buildout for deployment
 
 prd_nuffic_release_deploy
     Deploy a new buildout in the releases directory for app-nuffic-prd
-
-prd_ha_release_tag
-    Tag git modules in local HA buildout for deployment
-
-prd_ha_release_deploy
-    Deploy a new buildout in the releases directory for app-ha-prd
 
 
 Fabric tasks

@@ -94,7 +94,7 @@ def deploy_buildout(tag=None):
     with cd('releases'):
 
         if not exists(buildout_dir):
-            run('git clone {0} {1}'.format(env.buildouts.get(app), buildout_dir))
+            run('git clone {0} {1}'.format(env.buildout_uri, buildout_dir))
 
         with cd(buildout_dir):
             if not exists('bin/buildout'):
@@ -107,6 +107,8 @@ def deploy_buildout(tag=None):
                     except:
                         print 'You need to provide %s file in home folder to create initial buildout'%'~/current/{0}-settings.cfg .'.format(app_env)
                         raise
+
+                # TODO: check for python/virtualenv
                 run('~/bin/python bootstrap.py -c buildout-{0}.cfg'.format(app_env))
 
             run('git fetch')
@@ -116,11 +118,13 @@ def deploy_buildout(tag=None):
             run('./bin/buildout -c buildout-{0}.cfg'.format(app_env))
 
 @task
-def switch_buildout():
+def switch_buildout(tag=None):
     app_env = get_environment()
 
     buildout_dir = fmt_date()
-    tag = 'prd-{}'.format(fmt_date())
+
+    if not tag:
+        tag = 'prd-{}'.format(fmt_date())
 
     with cd('releases/{0}'.format(buildout_dir)):
         
@@ -136,8 +140,8 @@ def switch_buildout():
                 run('./bin/supervisorctl stop crashmail')
 
             if exists('~/current/bin/supervisorctl'):
-                run('~/current/bin/supervisorctl stop haproxy;')
-                run('./bin/supervisorctl start haproxy')
+                run('~/current/bin/supervisorctl stop haproxy varnish')
+                run('./bin/supervisorctl start haproxy varnish')
 
                 instance_ports = get_instance_ports()
 
