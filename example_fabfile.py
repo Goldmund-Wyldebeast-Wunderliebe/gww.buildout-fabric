@@ -105,4 +105,4 @@ def prd_switch(server):
 def prd_update(tag=None):
     """ Pull modules in env.modules and restart instances """
     pull_modules(tag=tag)
-        restart_instances()
+    restart_instances()
