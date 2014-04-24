@@ -34,8 +34,8 @@ Nuffic Appie environments'  below.
 
 
 Fabric example shortcuts
-----------------
-Shortcuts for running one or more tasks on a specific Nuffic environment
+------------------------
+Shortcuts for running one or more tasks on a specific buildout environment
 
 Usage: fab  <task name>
 
@@ -48,15 +48,15 @@ Update Nuffic acceptance
 acc_test
     Test the connection with acceptance environment
 
-acc_nuffic_update
-    Update Nuffic acceptance environment using *pull_modules* and
+acc_update
+    Update acceptance environment using *pull_modules* and
     *restart_instances* tasks.
 
-prd_nuffic_release_tag
-    Tag git modules in local Nuffic buildout for deployment
+prepare_release
+    Tag git modules in local buildout for deployment
 
-prd_nuffic_release_deploy
-    Deploy a new buildout in the releases directory for app-nuffic-prd
+prd_deploy
+    Deploy a new buildout in the releases directory 
 
 
 Fabric tasks
@@ -101,10 +101,10 @@ switch_buildout
 1. https://intranet.gw20e.com/projects/nuffic/new-prd-release
 
 
-Prepairing Nuffic Appie environments
+Prepairing Appie environments
 ------------------------------------
 
-All Nuffic portals are contained in Appie environments. Appie users are
+All Plone portals are contained in Appie environments. Appie users are
 'locked' accounts by default. If a user is locked two exclamation marks can
 be seen in /etc/shadow
 

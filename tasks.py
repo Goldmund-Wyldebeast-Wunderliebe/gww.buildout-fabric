@@ -119,6 +119,7 @@ def deploy_buildout(tag=None):
 
 @task
 def switch_buildout(tag=None):
+    """ Switch supervisor from old to current buildout """
     app_env = get_environment()
 
     buildout_dir = fmt_date()
@@ -160,8 +161,8 @@ def switch_buildout(tag=None):
 
 @task
 def get_master_slave(quiet=True):
+    """ Returns hostnames for master and slave """
 
-    # find out who is the master server
     if type(env.prd_hosts) != tuple:
         raise ValueError(u'It seems this setup does not have multiple prd servers')
 
