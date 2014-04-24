@@ -51,22 +51,26 @@ env.prd_hosts = (
 @task
 @hosts(env.acc_host)
 def acc_test():
+    """ Test connection """
     test_connection()
 
 @task
 @hosts(env.acc_host)
 def acc_update(tag=None):
+    """ Pull modules in env.modules and restart instances """
     pull_modules(tag=tag)
     restart_instances()
 
 @task
 @hosts(env.acc_host)
 def acc_deploy():
+    """ Create new buildout in release dir """
     deploy_buildout(tag='master')
 
 @task
 @hosts(env.acc_host)
 def acc_switch():
+    """ Switch supervisor in current buildout dir to latest buildout """
     switch_buildout(tag='master')
 
 #############
@@ -74,11 +78,12 @@ def acc_switch():
 #############
 @task
 def prd_test():
+    """ Test connection, returns master/slave hostnames """
     get_master_slave()
 
 @task
 def prd_deploy(server):
-    """ Usage: ./bin/fab prd_deploy:master OR ./bin/fab prd_deploy:slave
+    """ Create new buildout in release dir. Usage: ./bin/fab prd_deploy:master OR ./bin/fab prd_deploy:slave
     """
 
     cluster = get_master_slave()
@@ -88,9 +93,8 @@ def prd_deploy(server):
 
 @task
 def prd_switch(server):
-    """ Usage: ./bin/fab prd_deploy:master OR ./bin/fab prd_deploy:slave
+    """ Switch supervisor in current buildout dir to latest buildout. Usage: ./bin/fab prd_deploy:master OR ./bin/fab prd_deploy:slave 
     """
-
     cluster = get_master_slave()
 
     with settings(host_string=cluster[server]):
@@ -99,5 +103,6 @@ def prd_switch(server):
 @task
 @hosts(env.prd_hosts)
 def prd_update(tag=None):
+    """ Pull modules in env.modules and restart instances """
     pull_modules(tag=tag)
         restart_instances()
