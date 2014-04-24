@@ -1,6 +1,7 @@
 """ Specific Fabric tasks """
 
 import time
+import os
 from fabric.api import task, cd, env, local, lcd, run, sudo, settings
 from fabric.decorators import task, hosts
 from fabric.contrib.files import exists
@@ -14,23 +15,21 @@ def prepare_release():
 
     def git_tag(tag):
         local('git commit -am "tagging production release"')
-        # TODO: check if tag if exists, if so silently fail/continue
-        # http://stackoverflow.com/questions/3418674/bash-shell-script-function-to-verify-git-tag-or-commit-exists-and-has-been-pushe
         local('git tag -af {} -m "tagged production release"'.format(tag))
         local('git push --tags -f')
         local('git push')
 
-    # TODO: find out CWD for buildout_path
-    buildout_path = ''
-    modules = get_modules(app_env)
+    buildout_path = os.getcwd()
+    modules = env.modules
     tag = 'prd-{}'.format(fmt_date())
-
-   
 
     for m in modules:
         print 'Tagging module: {0}'.format(m)
         # TODO: check if tag if exists, if so silently fail/continue
         with lcd('{0}/src/{1}'.format(buildout_path, m)):
+            tags = local('git tag'.format(tag))
+            #import pdb; pdb.set_trace()
+
             local('''sed -i.org 's/version = .*/version = "{}"/' setup.py'''.format(tag))
             git_tag(tag)
 
@@ -57,11 +56,13 @@ def prepare_release():
         git_tag(tag)
 
 @task
-def pull_modules():
+def pull_modules(tag=None):
     """ Git pull module on remote buildout """
     for m in get_modules():
         print 'Updating {0}'.format(m)
         with cd('current/src/{0}'.format(m)):
+            if tag:
+                run('git checkout {0}'.format(tag))
             run('git pull')
 
 @task
@@ -75,7 +76,7 @@ def restart_instances():
         run('~/current/bin/supervisorctl restart instance{0}'.format(i))
         url = env.site_url.format(port)
         wget(url)
-        time.sleep(120)
+        time.sleep(30)
 
 
 @task
@@ -182,6 +183,11 @@ def get_master_slave(quiet=True):
 
     if not (cluster['master'] or cluster['slave']):
         raise ValueError(u'No master and/or slave server found!')
+    
+    print(
+        'Current cluster info: \n\tmaster is {master}\n\tslave is {slave}\n'
+        .format(**cluster)
+    )
 
     return cluster
 
