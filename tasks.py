@@ -149,39 +149,50 @@ def deploy_buildout(tag=None):
 @task
 def switch_buildout(tag=None):
     """ Switch supervisor from old to current buildout """
+    initial = False
     app_env = get_environment()
-
     buildout_dir = fmt_date()
 
     if not tag:
         tag = 'prd-{}'.format(fmt_date())
 
+    output = run('ls -l ~/current')
+    if 'releases/initial/' in output.split()[-1]:
+        initial = True
+
     with cd('releases/{0}'.format(buildout_dir)):
-        
-            if exists('./var/supervisord.pid'):
-                run('./bin/supervisorctl shutdown')
-                time.sleep(10)
 
-            run('./bin/supervisord')
-            time.sleep(15)
+        if initial:
+            run('./bin/zeo start')
 
-            if app_env == 'prd':
-                run('~/current/bin/supervisorctl stop crashmail')
-                run('./bin/supervisorctl stop crashmail')
+        if exists('./var/supervisord.pid'):
+            run('./bin/supervisorctl shutdown')
+            time.sleep(10)
 
+        run('./bin/supervisord')
+        time.sleep(15)
+
+        if app_env == 'prd':
+            run('~/current/bin/supervisorctl stop crashmail')
+            run('./bin/supervisorctl stop crashmail')
+
+        if exists('~/current/bin/supervisorctl'):
+            run('~/current/bin/supervisorctl stop haproxy varnish')
+            run('./bin/supervisorctl start haproxy varnish')
+
+        instance_ports = get_instance_ports()
+
+        for i, port in enumerate(instance_ports):
+            run('./bin/supervisorctl start instance{0}'.format(i))
             if exists('~/current/bin/supervisorctl'):
-                run('~/current/bin/supervisorctl stop haproxy varnish')
-                run('./bin/supervisorctl start haproxy varnish')
+                run('~/current/bin/supervisorctl stop instance{0}'.format(i))
 
-                instance_ports = get_instance_ports()
+            print('Sleeping 30 seconds before continueing')
+            time.sleep(30)
 
-                for i, port in enumerate(instance_ports):
-                    run('~/current/bin/supervisorctl stop instance{0}'.format(i))
-                    run('./bin/supervisorctl start instance{0}'.format(i))
-                    time.sleep(30)
-
-                    url = env.site_url.format(port)
-                    wget(url)
+            if not initial:
+                url = env.site_url.format(port)
+                wget(url)
 
     if exists('~/current/bin/supervisorctl'):
         run('~/current/bin/supervisorctl shutdown')
