@@ -10,10 +10,6 @@ from fabric.contrib.files import exists
 from helpers import (get_application, get_environment, get_instance_ports,
     wget, fmt_date, replace_tag, get_modules, check_for_existing_tag)
 
-FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-logging.basicConfig(format=FORMAT, level=logging.INFO)
-logger = logging.getLogger(__name__)
-
 @task
 def prepare_release():
     """ Git tag all modules in env.modules, pin tags in prd-sources.cfg and tag buildout """
@@ -34,9 +30,9 @@ def prepare_release():
             if not check_for_existing_tag(tag):
                 local('''sed -i.org 's/version = .*/version = "{}"/' setup.py'''.format(tag))
                 git_tag(tag)
-                logger.info('Tagged git module {0} with tag {1}'.format(m, tag))
+                print('Tagged git module {0} with tag {1}'.format(m, tag))
             else:
-                logger.info('Git module {0} already tagged with tag {1}'.format(m, tag))
+                print('Git module {0} already tagged with tag {1}'.format(m, tag))
 
     old_settings = '{}/prd-sources.cfg'.format(buildout_path)
     new_settings = '{}/prd-sources.cfg.new'.format(buildout_path)
@@ -44,15 +40,14 @@ def prepare_release():
     if os.path.isfile(old_settings):    
         local('touch {}'.format(new_settings))
 
-        logger.info('Changing tags in prd-settings.cfg, make sure '
-            'your module is in prd-settings.cfg.')
+        print('Changing tags in prd-settings.cfg, make sure your module is in prd-settings.cfg.')
         with open(new_settings, 'wt') as fout:
             with open(old_settings, 'rt') as fin:
                 for line in fin:
                     lines = line.split()
 
                     if tag in line:
-                        logger.info('Git module {0} already pinned, skipping.')
+                        print('Git module {0} already pinned, skipping.')
                         continue
 
                     if lines[0] in modules:
@@ -66,12 +61,15 @@ def prepare_release():
         with lcd(buildout_path):
             if not check_for_existing_tag(tag):
                 git_tag(tag)
-                logger.info('Tagged buildout with tag {0}'.format(tag))
+                print('Tagged buildout with tag {0}'.format(tag))
             else:
-                logger.info('Buildout already tagged with tag {0}'.format(tag))
+                print('Buildout already tagged with tag {0}'.format(tag))
     else:
-        logger.error('Cannot set tags in prd-settings.cfg, add your git module '
-            '(ending with rev=dummy) to this config.')
+        print(
+            'Cannot set tags in prd-settings.cfg, add your git module '
+            '(ending with rev=dummy) to this config.'
+        )
+        raise
 
 @task
 def pull_modules(tag=None):
@@ -213,7 +211,7 @@ def get_master_slave(quiet=True):
 def test_connection():
     """ Task to test if the connection is working """
 
-    print u'Testing fabric connection for {0} on {1}'.format(env.user, env.host)
+    print(u'Testing fabric connection for {0} on {1}'.format(env.user, env.host))
     run('uname -a')
     run('whoami')
     run('ls -l')
