@@ -122,10 +122,22 @@ def deploy_buildout(tag=None):
                     try:
                         run('cp ~/current/{0}-settings.cfg .'.format(app_env))
                     except:
-                        print 'You need to provide %s file in home folder to create initial buildout'%'~/current/{0}-settings.cfg .'.format(app_env)
+                        if not exists('~/releases/initial'):
+                            run('mkdir -p ~/releases/initial', warn_only=True)
+                            run('ln -s ~/releases/initial ~/current', warn_only=True)
+                        print(
+                            'You need to provide ~/current/{0}-settings.cfg '
+                            'file in home folder to create initial buildout.\n'
+                            'Copy config using: \n'
+                            '  cp ~/releases/{1}/example-{0}-settings.cfg ~/current/{0}-settings.cfg'
+                            .format(app_env, buildout_dir)
+                        )
                         raise
 
-                # TODO: check for python/virtualenv
+                if not exists('~/bin/python'):
+                    run('virtualenv-2.7 $HOME')
+                    run('~/bin/pip install -U setuptools')
+
                 run('~/bin/python bootstrap.py -c buildout-{0}.cfg'.format(app_env))
 
             run('git fetch')
