@@ -61,6 +61,14 @@ def replace_tag(tag, lines):
     lines.append('\n')
     return ' '.join(lines)
 
+def check_for_existing_tag(tag):
+    tags_output = local('git tag'.format(tag), capture=True)
+    tags = tags_output.split('\n')  
+
+    if tag in tags:
+        return True
+
+
 
 
     
