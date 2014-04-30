@@ -92,8 +92,6 @@ def restart_instances():
         run('~/current/bin/supervisorctl restart instance{0}'.format(i))
         url = env.site_url.format(port)
         wget(url)
-        time.sleep(30)
-
 
 @task
 def deploy_buildout(tag=None):

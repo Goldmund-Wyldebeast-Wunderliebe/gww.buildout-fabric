@@ -24,9 +24,9 @@ def get_instance_ports(old=False):
     env = get_environment()
     
     if not old:
-        ports = run('cat ~/current/{0}-settings.cfg | grep -A1 "instance[0-9]" | grep http-address'.format(env))
+        ports = run('cat ~/current/{0}-settings.cfg | grep -v "^#" | grep -A1 "instance[0-9]" | grep http-address'.format(env))
     else:
-        ports = run('cat ~/current/{0}-settings.cfg |grep "instance[0-9]-port"'.format(env))
+        ports = run('cat ~/current/{0}-settings.cfg | grep -v "^#" | grep "instance[0-9]-port"'.format(env))
 
     return [int(x.split('=')[1].lstrip()) for x in ports.replace('\r', '').split('\n')]
 
@@ -46,8 +46,6 @@ def wget(url, retry=4, sleep=30):
 
         print '[{0}/{1}] Sleeping for {2} secs before trying'.format(i+1, retry, sleep)
         time.sleep(sleep)
-
-
         i += 1
 
 def replace_tag(tag, lines):
