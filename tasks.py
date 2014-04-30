@@ -124,12 +124,20 @@ def deploy_buildout(tag=None):
                             run('mkdir -p ~/releases/initial', warn_only=True)
                             run('ln -s ~/releases/initial ~/current', warn_only=True)
                         print(
-                            'You need to provide ~/current/{0}-settings.cfg '
+                            '\nYou need to provide ~/current/{0}-settings.cfg '
                             'file in home folder to create initial buildout.\n'
                             'Copy config using: \n'
                             '  cp ~/releases/{1}/example-{0}-settings.cfg ~/current/{0}-settings.cfg'
                             .format(app_env, buildout_dir)
                         )
+                        if app_env == 'acc':
+                            print(
+                                '\nMake sure the database paths on acceptance are not in the buildout directory.\n'
+                                'This way the same database can be reused when creating a new buildout release folder:\n'
+                                '  [zeo]\n'
+                                '  file-storage = /opt/APPS/{0}/acc/db/filestorage/Data.fs\n'
+                                '  blob-storage = /opt/APPS/{0}/acc/db/blobstorage\n'.format(app)
+                            )
                         raise
 
                 if not exists('~/bin/python'):
