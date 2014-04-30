@@ -40,7 +40,7 @@ def prepare_release():
     if os.path.isfile(old_settings):    
         local('touch {}'.format(new_settings))
 
-        print('Changing tags in prd-settings.cfg, make sure your module is in prd-settings.cfg.')
+        print('\nChanging tags in prd-settings.cfg, make sure your module is in prd-settings.cfg.')
         with open(new_settings, 'wt') as fout:
             with open(old_settings, 'rt') as fin:
                 for line in fin:
@@ -66,7 +66,7 @@ def prepare_release():
                 print('Buildout already tagged with tag {0}'.format(tag))
     else:
         print(
-            'Cannot set tags in prd-settings.cfg, add your git module '
+            '\nCannot set tags in prd-settings.cfg, add your git module '
             '(ending with rev=dummy) to this config.'
         )
         raise
@@ -230,7 +230,7 @@ def get_master_slave(quiet=True):
         raise ValueError(u'No master and/or slave server found!')
     
     print(
-        'Current cluster info: \n\tmaster is {master}\n\tslave is {slave}\n'
+        '\nCurrent cluster info: \n\tmaster is {master}\n\tslave is {slave}\n'
         .format(**cluster)
     )
 
