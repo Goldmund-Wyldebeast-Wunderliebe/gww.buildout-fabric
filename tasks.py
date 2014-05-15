@@ -205,42 +205,37 @@ def switch_buildout(tag=None):
     run('rm ~/current')
     run('ln -s releases/{0} current'.format(buildout_dir))
 
-@task
-def get_master_slave(quiet=True):
+#@task
+def get_master_slave(hosts, quiet=True):
     """ Returns hostnames for master and slave """
 
-    if type(env.prd_hosts) != tuple:
-        raise ValueError(u'It seems this setup does not have multiple prd servers')
+    if not hosts:
+        raise ValueError(u'No hosts defined')
+    elif len(hosts) == 1:
+        return dict(master=hosts[0])
+    elif len(hosts) != 2:
+        raise ValueError(u'It seems this is not master/slave setup')
 
     cluster = dict(master=None, slave=None)    
 
-    for login in env.prd_hosts:
-        with settings(host_string=login):
-            output = run(
-                'cat /proc/drbd | grep \'Primary/Secondary\'', 
-                warn_only=True, 
-                quiet=quiet
-            )
-            if output:
-                cluster['master'] = login
+    for host in hosts:
+        with settings(host_string=host):
+            output = run('cat /proc/drbd', quiet=quiet)
+            if 'Primary/Secondary' in output: 
+                cluster['master'] = host
+            elif 'Secondary/Primary' in output: 
+                cluster['slave'] = host
             else:
-                cluster['slave'] = login
+                raise ValueError(u'DRBD problem!')
 
-    if not (cluster['master'] or cluster['slave']):
-        raise ValueError(u'No master and/or slave server found!')
-    
-    print(
-        '\nCurrent cluster info: \n\tmaster is {master}\n\tslave is {slave}\n'
-        .format(**cluster)
-    )
+    if not (cluster['master'] and cluster['slave']):
+        raise ValueError(u'No master/slave server setup found!')
 
     return cluster
 
-@task
+#@task
 def test_connection():
     """ Task to test if the connection is working """
 
-    print(u'Testing fabric connection for {0} on {1}'.format(env.user, env.host))
-    run('uname -a')
-    run('whoami')
-    run('ls -l')
+    print(u'Testing fabric connection for {0}'.format(env.host_string))
+    run('hostname ; whoami ; pwd')
