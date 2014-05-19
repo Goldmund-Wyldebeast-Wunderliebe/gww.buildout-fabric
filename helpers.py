@@ -5,7 +5,6 @@ from fabric.context_managers import settings
 from fabric.operations import run
 from fabric.state import env
 from fabfile import deploy_info
-from fabric_lib.tasks import get_master_slave
 
 
 def get_modules():
@@ -97,3 +96,31 @@ def test_connection():
 
     print(u'Testing fabric connection for {0}'.format(env.host_string))
     run('hostname ; whoami ; pwd')
+
+
+def get_master_slave(hosts, quiet=True):
+    """ Returns hostnames for master and slave """
+
+    if not hosts:
+        raise ValueError(u'No hosts defined')
+    elif len(hosts) == 1:
+        return dict(master=hosts[0])
+    elif len(hosts) != 2:
+        raise ValueError(u'It seems this is not master/slave setup')
+
+    cluster = dict(master=None, slave=None)
+
+    for host in hosts:
+        with settings(host_string=host):
+            output = run('cat /proc/drbd', quiet=quiet)
+            if 'Primary/Secondary' in output:
+                cluster['master'] = host
+            elif 'Secondary/Primary' in output:
+                cluster['slave'] = host
+            else:
+                raise ValueError(u'DRBD problem!')
+
+    if not (cluster['master'] and cluster['slave']):
+        raise ValueError(u'No master/slave server setup found!')
+
+    return cluster

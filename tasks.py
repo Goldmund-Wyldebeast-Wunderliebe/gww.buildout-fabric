@@ -3,15 +3,16 @@
 import time
 import os
 
-from fabric.api import cd, env, local, lcd, run, settings
+from fabric.api import cd, env, local, lcd, run
 from fabric.decorators import task
 from fabric.contrib.files import exists
 
 from fabfile import deploy_info
-from fabric_lib.helpers import test_connection
+from fabric_lib.helpers import test_connection, get_master_slave
 from helpers import (get_application, get_environment, get_instance_ports,
     wget, fmt_date, replace_tag, get_modules, check_for_existing_tag,
     select_servers)
+
 
 
 ################
@@ -212,34 +213,6 @@ def switch_buildout(tag=None):
         run('~/current/bin/supervisorctl shutdown')
     run('rm ~/current')
     run('ln -s releases/{0} current'.format(buildout_dir))
-
-
-def get_master_slave(hosts, quiet=True):
-    """ Returns hostnames for master and slave """
-
-    if not hosts:
-        raise ValueError(u'No hosts defined')
-    elif len(hosts) == 1:
-        return dict(master=hosts[0])
-    elif len(hosts) != 2:
-        raise ValueError(u'It seems this is not master/slave setup')
-
-    cluster = dict(master=None, slave=None)    
-
-    for host in hosts:
-        with settings(host_string=host):
-            output = run('cat /proc/drbd', quiet=quiet)
-            if 'Primary/Secondary' in output: 
-                cluster['master'] = host
-            elif 'Secondary/Primary' in output: 
-                cluster['slave'] = host
-            else:
-                raise ValueError(u'DRBD problem!')
-
-    if not (cluster['master'] and cluster['slave']):
-        raise ValueError(u'No master/slave server setup found!')
-
-    return cluster
 
 @task
 def check_cluster(layer='acc'):
