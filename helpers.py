@@ -4,7 +4,6 @@ from fabric.api import cd, env, local, lcd, run, sudo, settings
 from fabric.context_managers import settings
 from fabric.operations import run
 from fabric.state import env
-from fabfile import deploy_info
 
 
 def get_modules():
@@ -38,9 +37,13 @@ def get_instance_ports(old=False):
 def get_zodb_paths():
     env = get_environment()
 
+    datafs = run('cat ~/current/{0}-settings.cfg | grep -v "^#" | grep "file-storage"'.format(env))
+    blob = run('cat ~/current/{0}-settings.cfg | grep -v "^#" | grep "blob-storage"'.format(env))
+    
     paths = {}
-    paths['datafs'] = run('cat ~/current/{0}-settings.cfg | grep -v "^#" | grep "file-storage"'.format(env))
-    paths['blob'] = run('cat ~/current/{0}-settings.cfg | grep -v "^#" | grep "blob-storage"'.format(env))
+    paths['datafs'] = datafs.split('=')[1].lstrip()
+    paths['blob'] = blob.split('=')[1].lstrip()
+
     return paths
 
 def fmt_date():
@@ -82,7 +85,7 @@ def check_for_existing_tag(tag):
 
 def select_servers(func):
     def wrapped(layer='acc', server=None, *args, **kwargs):
-        servers = deploy_info[layer]['hosts']
+        servers = env.deploy_info[layer]['hosts']
         if server:
             matches = [s for s in servers if server in s]
             if matches:

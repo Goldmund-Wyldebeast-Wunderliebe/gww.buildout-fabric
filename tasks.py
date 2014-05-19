@@ -8,11 +8,10 @@ from fabric.api import cd, env, local, lcd, run, get
 from fabric.decorators import task
 from fabric.contrib.files import exists
 
-from fabfile import deploy_info
 from fabric_lib.helpers import test_connection, get_master_slave
 from helpers import (get_application, get_environment, get_instance_ports,
     wget, fmt_date, replace_tag, get_modules, check_for_existing_tag,
-    select_servers)
+    select_servers, get_zodb_paths)
 
 
 
@@ -217,7 +216,7 @@ def switch_buildout(tag=None):
 
 @task
 def check_cluster(layer='acc'):
-    cluster = get_master_slave(deploy_info[layer]['hosts'], quiet=False)
+    cluster = get_master_slave(env.deploy_info[layer]['hosts'], quiet=False)
     print('\n'.join(
         ['', 'Current cluster info for {0}:'.format(layer)] +
         ["\t{0} is {1}".format(k,v) for k,v in sorted(cluster.items())] +
@@ -235,12 +234,14 @@ def pull_database(path='var', backup=True):
 
         buildout_path = os.getcwd()
 
+        zodb_paths = get_zodb_paths()
+
         get(
-            remote_path='~/db/filestorage/Data.fs',
+            remote_path=zodb_paths['datafs'],
             local_path='{0}/{1}/filestorage/Data.fs'.format(buildout_path, path)
         )
         get(
-            remote_path='~/db/blobstorage',
+            remote_path=zodb_paths['blob'],
             local_path='{0}/{1}/blobstorage'.format(buildout_path, path)
         )
 
