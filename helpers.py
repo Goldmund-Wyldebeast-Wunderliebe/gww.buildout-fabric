@@ -1,6 +1,12 @@
 import time
 from datetime import datetime
 from fabric.api import cd, env, local, lcd, run, sudo, settings
+from fabric.context_managers import settings
+from fabric.operations import run
+from fabric.state import env
+from fabfile import deploy_info
+from fabric_lib.tasks import get_master_slave
+
 
 def get_modules():
     """ Returns Python get_modules for appie env """
@@ -67,6 +73,27 @@ def check_for_existing_tag(tag):
         return True
 
 
+def select_servers(func):
+    def wrapped(layer='acc', server=None, *args, **kwargs):
+        servers = deploy_info[layer]['hosts']
+        if server:
+            matches = [s for s in servers if server in s]
+            if matches:
+                servers = matches
+            else:
+                cluster = get_master_slave(servers)
+                servers = [cluster[server]]
+        for host in servers:
+            print host
+            with settings(host_string=host):
+                func(*args, **kwargs)
+    wrapped.__name__ = func.__name__
+    wrapped.__doc__ = func.__doc__
+    return wrapped
 
 
-    
+def test_connection():
+    """ Task to test if the connection is working """
+
+    print(u'Testing fabric connection for {0}'.format(env.host_string))
+    run('hostname ; whoami ; pwd')

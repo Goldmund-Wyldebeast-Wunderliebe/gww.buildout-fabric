@@ -20,8 +20,9 @@ Usage::
 """
 from fabric.api import env, settings
 from fabric.decorators import task, hosts
+from fabric_lib.helpers import test_connection
 
-from fabric_lib.tasks import (test_connection, pull_modules, restart_instances, 
+from fabric_lib.tasks import (pull_modules, restart_instances,
     deploy_buildout, switch_buildout, get_master_slave, prepare_modules)
 
 ##############
