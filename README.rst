@@ -12,9 +12,10 @@ Note: this is already done in the recent buildout-templates.
 Add this repository as a git submodule:
 
     cd {buildout-dir}
-    git submodule add -f  git@git.gw20e.com:gww/fabric-buildout.git fabric_lib
-    cp fabric_lib/example_fabfile.py fabfile.py
+    git submodule add -f  git@git.gw20e.com:gww/fabric-buildout.git fabric_lib\
 
+Finally go to https://git.gw20e.com/tools/buildout-template/blob/master/fabfile.py
+and download this file and place in in your buildout. 
 
 Bootstrapping Fabric
 --------------------
@@ -33,44 +34,72 @@ Add your SSH public key to the remote appie user, see paragraph 'Preparing
 Nuffic Appie environments'  below.
 
 
-Fabric example shortcuts
+Fabric layered tasks
 ------------------------
-Shortcuts for running one or more tasks on a specific buildout environment
+Shortcuts for running one or more tasks on a specific buildout environment. 
 
-Usage: fab  <task name>
+Usage: fab  <task name>:<parameters>
 
-Examples:
+The layered tasks will accept an *env* and *server* parameter to specify 
+a specific envirnment. The *env* parameter accepts tst, acc and prd, *server* 
+accepts master or slave.
 
-Update Nuffic acceptance
+Examples
+~~~~~~~~
 
-    # fab acc_test 
+Run test function on acceptance
 
-acc_test
+    # fab test:env=acc
+
+Copy database from master server on the production environment:
+
+    # fab copy:env=prd, server=master
+
+Deploy a new buildout for the slave server on the production environment:
+
+    # fab deploy:env=prd, server=slave
+
+Commands
+~~~~~~~~
+
+test
     Test the connection with acceptance environment
 
-acc_update
+update
     Update acceptance environment using *pull_modules* and
     *restart_instances* tasks.
 
-prepare_release
-    Tag git modules in local buildout for deployment
+deploy
+    This script handles the steps (1) which are executed on the production Appie's
+    to deploy a new buildout. A fresh buildout is cloned and run. Switching can 
+    be done in the next task.
 
-prd_deploy
-    Deploy a new buildout in the releases directory 
+switch
+    The current buildout will be switched with the new one. Instances are restarted 
+    and finally a switch is made between the old buildout and the  new one.
+
+copy
+    Copies the Data.fs and blobstorage to the local buildout. 
 
 
-Fabric tasks
-------------
+Fabric basic tasks
+------------------
+Preferably use the layered tasks. These are easier to use, you have to type less
+to specify a specfic environment.
 
-Usage: fab -H <remote host> -u <appie user> <task name>
+Usage: fab <task name>
 
-Examples:
+Examples
+~~~~~~~~
 
 Restart connection on nuffic-acc:
     # fab -H nuffic-acc -u app-nuffic-acc restart_instances
 
 Prepare production release locally:
     # fab -H prepare_release:nuffic
+
+Commands
+~~~~~~~~
 
 test_connection
     Runs a few harmless commands on the remote server to check the connection
