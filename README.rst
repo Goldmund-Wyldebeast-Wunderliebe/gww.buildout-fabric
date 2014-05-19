@@ -85,7 +85,8 @@ copy
 Fabric basic tasks
 ------------------
 Preferably use the layered tasks. These are easier to use, you have to type less
-to specify a specfic environment.
+to specify a specfic environment. The basic tasks are used under water by the 
+layered ones.
 
 Usage: fab <task name>
 
