@@ -35,6 +35,14 @@ def get_instance_ports(old=False):
 
     return [int(x.split('=')[1].lstrip()) for x in ports.replace('\r', '').split('\n')]
 
+def get_zodb_paths():
+    env = get_environment()
+
+    paths = {}
+    paths['datafs'] = run('cat ~/current/{0}-settings.cfg | grep -v "^#" | grep "file-storage"'.format(env))
+    paths['blob'] = run('cat ~/current/{0}-settings.cfg | grep -v "^#" | grep "blob-storage"'.format(env))
+    return paths
+
 def fmt_date():
     now = datetime.now()
     return now.strftime('%Y-%m-%d')

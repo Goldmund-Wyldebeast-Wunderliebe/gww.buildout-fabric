@@ -1,9 +1,10 @@
 """ Specific Fabric tasks """
 
+from datetime import datetime
 import time
 import os
 
-from fabric.api import cd, env, local, lcd, run
+from fabric.api import cd, env, local, lcd, run, get
 from fabric.decorators import task
 from fabric.contrib.files import exists
 
@@ -223,6 +224,27 @@ def check_cluster(layer='acc'):
         ['']))
 
 
+@task
+def pull_database(path='var', backup=True):
+    with lcd(path):
+        if backup:
+            print('Backing up local database')
+            local('tar -pczf zodb_{0}.tgz filestorage blobstorage'.format(datetime.now().isoformat().replace(':','_')))
+            local('rm -rf filestorage/*')
+            local('rm -rf blobstorage/*')
+
+        buildout_path = os.getcwd()
+
+        get(
+            remote_path='~/db/filestorage/Data.fs',
+            local_path='{0}/{1}/filestorage/Data.fs'.format(buildout_path, path)
+        )
+        get(
+            remote_path='~/db/blobstorage',
+            local_path='{0}/{1}/blobstorage'.format(buildout_path, path)
+        )
+
+
 ################
 # Layered tasks
 ################
@@ -251,3 +273,9 @@ def deploy(tag=None):
 def switch(tag=None):
     """ Switch supervisor in current buildout dir to latest buildout """
     switch_buildout(tag=tag)
+
+@task
+@select_servers
+def copy():
+    """ Copy database from server """
+    pull_database()
