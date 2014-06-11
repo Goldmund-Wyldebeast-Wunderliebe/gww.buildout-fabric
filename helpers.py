@@ -1,4 +1,7 @@
 import time
+import re
+from StringIO import StringIO
+from ConfigParser import SafeConfigParser
 from datetime import datetime
 from fabric.api import cd, env, local, lcd, run, sudo, settings
 from fabric.context_managers import settings
@@ -10,41 +13,34 @@ def get_modules():
     """ Returns Python get_modules for appie env """
     return env.modules
 
-def get_environment():
-    """ Returns environment string; acc/prd"""
-    env = run('env | grep ENVIRONMENT')
-    print env
-    if env:
-        return env.replace('ENVIRONMENT=', '')
+def get_config():
+    """ Reads all kinds of stuff from buildout settings """
+    if hasattr(env, 'config'):
+        return env.config
+    filename = '~/current/{0}-settings.cfg'.format(env.appenv)
+    buf = StringIO(run('cat ' + filename, quiet=True))
+    env.config = SafeConfigParser()
+    env.config.readfp(buf, filename)
+    return env.config
 
-def get_application():
-    """ Returns appie app name; nuffic, ha, etc. """
-    app = run('env | grep APPLICATION')
-    if app:
-        return app.replace('APPLICATION=', '')
-
-def get_instance_ports(old=False):
+def get_instance_ports():
     """ Reads instance ports from buildout settings """
-    env = get_environment()
-    
-    if not old:
-        ports = run('cat ~/current/{0}-settings.cfg | grep -v "^#" | grep -A1 "instance[0-9]" | grep http-address'.format(env))
-    else:
-        ports = run('cat ~/current/{0}-settings.cfg | grep -v "^#" | grep "instance[0-9]-port"'.format(env))
-
-    return [int(x.split('=')[1].lstrip()) for x in ports.replace('\r', '').split('\n')]
+    config = get_config()
+    return [
+            int(v)
+            for s in sorted(config.sections())
+            for k, v in sorted(config.items(s))
+            if re.match('instance\d$',s) and k=='http-address'
+            or re.match('instance\d-port$',k)
+           ]
 
 def get_zodb_paths():
-    env = get_environment()
-
-    datafs = run('cat ~/current/{0}-settings.cfg | grep -v "^#" | grep "file-storage"'.format(env))
-    blob = run('cat ~/current/{0}-settings.cfg | grep -v "^#" | grep "blob-storage"'.format(env))
-    
-    paths = {}
-    paths['datafs'] = datafs.split('=')[1].lstrip()
-    paths['blob'] = blob.split('=')[1].lstrip()
-
-    return paths
+    config = get_config()
+    return {
+            k: v
+            for k, v in config.items('zeo')
+            if re.match('(file|blob)-storage$',k)
+           }
 
 def fmt_date():
     now = datetime.now()
@@ -95,7 +91,7 @@ def select_servers(func):
                 servers = [cluster[server]]
         for host in servers:
             print host
-            with settings(host_string=host):
+            with settings(host_string=host, appenv=layer):
                 func(*args, **kwargs)
     wrapped.__name__ = func.__name__
     wrapped.__doc__ = func.__doc__

@@ -8,10 +8,11 @@ from fabric.api import cd, env, local, lcd, run, get
 from fabric.decorators import task
 from fabric.contrib.files import exists
 
-from fabric_lib.helpers import test_connection, get_master_slave
-from helpers import (get_application, get_environment, get_instance_ports,
-    wget, fmt_date, replace_tag, get_modules, check_for_existing_tag,
-    select_servers, get_zodb_paths)
+from .helpers import (
+        test_connection, get_master_slave, select_servers,
+        get_instance_ports, get_zodb_paths,
+        wget, fmt_date, replace_tag, get_modules, check_for_existing_tag,
+        )
 
 
 
@@ -19,7 +20,6 @@ from helpers import (get_application, get_environment, get_instance_ports,
 # Basic tasks
 ################
 
-@task
 def prepare_release():
     """ Git tag all modules in env.modules, pin tags in prd-sources.cfg and tag buildout """
 
@@ -80,7 +80,6 @@ def prepare_release():
         )
         raise
 
-@task
 def pull_modules(tag=None):
     """ Git pull module on remote buildout """
     for m in get_modules():
@@ -90,11 +89,8 @@ def pull_modules(tag=None):
                 run('git checkout {0}'.format(tag))
             run('git pull')
 
-@task
 def restart_instances():
     """ Restarts all instances in remote buildout """
-    app = get_application()
-
     instance_ports = get_instance_ports()
 
     for i, port in enumerate(instance_ports):
@@ -102,16 +98,12 @@ def restart_instances():
         url = env.site_url.format(port)
         wget(url)
 
-@task
 def deploy_buildout(tag=None):
     """ Deploys a new buildout """
-    app = get_application()
-    app_env = get_environment()
-
     buildout_dir = fmt_date()
 
-    if not tag:
-        tag = 'prd-{}'.format(fmt_date())
+    #if not tag:
+    #    tag = '{}-{}'.format(env.appenv, fmt_date())
 
     if not exists('releases'):
         run('mkdir releases')
@@ -123,11 +115,11 @@ def deploy_buildout(tag=None):
         with cd(buildout_dir):
             if not exists('bin/buildout'):
 
-                if exists('~/current/{0}-settings.cfg .'.format(app_env)):
-                    run('cp ~/current/{0}-settings.cfg .'.format(app_env))
+                if exists('~/current/{0}-settings.cfg .'.format(env.appenv)):
+                    run('cp ~/current/{0}-settings.cfg .'.format(env.appenv))
                 else:
                     try:
-                        run('cp ~/current/{0}-settings.cfg .'.format(app_env))
+                        run('cp ~/current/{0}-settings.cfg .'.format(env.appenv))
                     except:
                         if not exists('~/releases/initial'):
                             run('mkdir -p ~/releases/initial', warn_only=True)
@@ -137,15 +129,15 @@ def deploy_buildout(tag=None):
                             'file in home folder to create initial buildout.\n'
                             'Copy config using: \n'
                             '  cp ~/releases/{1}/example-{0}-settings.cfg ~/current/{0}-settings.cfg'
-                            .format(app_env, buildout_dir)
+                            .format(env.appenv, buildout_dir)
                         )
-                        if app_env == 'acc':
+                        if env.appenv == 'acc':
                             print(
                                 '\nMake sure the database paths on acceptance are not in the buildout directory.\n'
                                 'This way the same database can be reused when creating a new buildout release folder:\n'
                                 '  [zeo]\n'
                                 '  file-storage = /opt/APPS/{0}/acc/db/filestorage/Data.fs\n'
-                                '  blob-storage = /opt/APPS/{0}/acc/db/blobstorage\n'.format(app)
+                                '  blob-storage = /opt/APPS/{0}/acc/db/blobstorage\n'.format(env.app)
                             )
                         raise
 
@@ -153,19 +145,18 @@ def deploy_buildout(tag=None):
                     run('virtualenv-2.7 $HOME')
                     run('~/bin/pip install -U setuptools')
 
-                run('~/bin/python bootstrap.py -c buildout-{0}.cfg'.format(app_env))
+                run('~/bin/python bootstrap.py -c buildout-{0}.cfg'.format(env.appenv))
 
             run('git fetch')
-            run('git checkout {}'.format(tag))
+            if tag:
+                run('git checkout {}'.format(tag))
             run('git pull', warn_only=True)
 
-            run('./bin/buildout -c buildout-{0}.cfg'.format(app_env))
+            run('./bin/buildout -c buildout-{0}.cfg'.format(env.appenv))
 
-@task
 def switch_buildout(tag=None):
     """ Switch supervisor from old to current buildout """
     initial = False
-    app_env = get_environment()
     buildout_dir = fmt_date()
 
     if not tag:
@@ -187,7 +178,7 @@ def switch_buildout(tag=None):
         run('./bin/supervisord')
         time.sleep(15)
 
-        if app_env == 'prd':
+        if env.appenv == 'prd':
             run('~/current/bin/supervisorctl stop crashmail')
             run('./bin/supervisorctl stop crashmail')
 
@@ -202,7 +193,7 @@ def switch_buildout(tag=None):
             if exists('~/current/bin/supervisorctl'):
                 run('~/current/bin/supervisorctl stop instance{0}'.format(i))
 
-            print('Sleeping 30 seconds before continueing')
+            print('Sleeping 30 seconds before continuing')
             time.sleep(30)
 
             if not initial:
@@ -214,41 +205,19 @@ def switch_buildout(tag=None):
     run('rm ~/current')
     run('ln -s releases/{0} current'.format(buildout_dir))
 
+
+################
+# Layered tasks
+################
+
 @task
 def check_cluster(layer='acc'):
+    """ Check HA/DRBD cluster health """
     cluster = get_master_slave(env.deploy_info[layer]['hosts'], quiet=False)
     print('\n'.join(
         ['', 'Current cluster info for {0}:'.format(layer)] +
         ["\t{0} is {1}".format(k,v) for k,v in sorted(cluster.items())] +
         ['']))
-
-
-@task
-def pull_database(path='var', backup=True):
-    with lcd(path):
-        if backup:
-            print('Backing up local database')
-            local('tar -pczf zodb_{0}.tgz filestorage blobstorage'.format(datetime.now().isoformat().replace(':','_')))
-            local('rm -rf filestorage/*')
-            local('rm -rf blobstorage/*')
-
-        buildout_path = os.getcwd()
-
-        zodb_paths = get_zodb_paths()
-
-        get(
-            remote_path=zodb_paths['datafs'],
-            local_path='{0}/{1}/filestorage/Data.fs'.format(buildout_path, path)
-        )
-        get(
-            remote_path=zodb_paths['blob'],
-            local_path='{0}/{1}/blobstorage'.format(buildout_path, path)
-        )
-
-
-################
-# Layered tasks
-################
 
 @task
 @select_servers
@@ -279,4 +248,12 @@ def switch(tag=None):
 @select_servers
 def copy():
     """ Copy database from server """
-    pull_database()
+    paths = get_zodb_paths()
+    local('rm -rf var/filestorage var/blobstorage')
+    get(
+        remote_path=paths['file-storage'],
+        local_path='var/filestorage/Data.fs')
+    get(
+        remote_path=paths['blob-storage'],
+        local_path='var/blobstorage')
+
