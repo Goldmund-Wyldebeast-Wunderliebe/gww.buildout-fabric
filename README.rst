@@ -12,7 +12,7 @@ Note: this is already done in the recent buildout-templates.
 Add this repository as a git submodule:
 
     cd {buildout-dir}
-    git submodule add -f  git@git.gw20e.com:gww/fabric-buildout.git fabric_lib\
+    git submodule add -f  git@git.gw20e.com:gww/fabric-buildout.git fabric_lib
 
 Finally go to https://git.gw20e.com/tools/buildout-template/blob/master/fabfile.py
 and download this file and place in in your buildout. 
@@ -31,7 +31,7 @@ Modify the fabfile.py in the buildout and adjust the settings:
     # vim {buildout-dir}/fabfile.py
 
 Add your SSH public key to the remote appie user, see paragraph 'Preparing
-Nuffic Appie environments'  below.
+Appie environments'  below.
 
 
 Fabric layered tasks
@@ -53,11 +53,11 @@ Run test function on acceptance
 
 Copy database from master server on the production environment:
 
-    # fab copy:env=prd, server=master
+    # fab copy:env=prd,server=master
 
 Deploy a new buildout for the slave server on the production environment:
 
-    # fab deploy:env=prd, server=slave
+    # fab deploy:env=prd,server=slave
 
 Commands
 ~~~~~~~~
@@ -131,7 +131,7 @@ switch_buildout
 1. https://intranet.gw20e.com/projects/nuffic/new-prd-release
 
 
-Prepairing Appie environments
+Preparing Appie environments
 ------------------------------------
 
 All Plone portals are contained in Appie environments. Appie users are
