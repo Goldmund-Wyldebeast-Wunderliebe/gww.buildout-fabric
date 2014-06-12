@@ -29,6 +29,7 @@ def prepare_release(tag=None):
         tag = '{}-{}'.format(env.appenv, fmt_date())
 
     def git_tag(tag):
+        # XXX why commit? and why tag -f?
         local('git commit -am "tagging production release"')
         local('git tag -af {} -m "tagged production release"'.format(tag))
         local('git push --tags -f')
@@ -52,7 +53,12 @@ def prepare_release(tag=None):
         srcdir = os.path.join('src', m)
         if not check_for_existing_tag(tag, repo=srcdir):
             with lcd(srcdir):
-                local('''sed -i.org 's/version = .*/version = "{}"/' setup.py'''.format(tag))
+                #local('''sed -i.org 's/version = .*/version = "{}"/' setup.py'''.format(tag))
+                # XXX Modify version in setup.py if we intend jarn.mkrelease,
+                # and tag is like "1.1.5".  That only makes sense on a single
+                # module, not in this case.
+                # If tag is something like "sprint7", we dont' modify the
+                # module, just add a tag.
                 git_tag(tag)
                 print('Tagged git module {0} with tag {1}'.format(m, tag))
 
@@ -91,9 +97,32 @@ def prepare_release(tag=None):
         print('Tagged buildout with tag {0}'.format(tag))
 
 
+################
+# Layered tasks
+################
+
 @task
-def pull_modules(tag=None):
-    """ Git pull module on remote buildout """
+def check_cluster(layer='acc'):
+    """ Check HA/DRBD cluster health """
+    cluster = get_master_slave(env.deploy_info[layer]['hosts'], quiet=False)
+    print('\n'.join(
+        ['', 'Current cluster info for {0}:'.format(layer)] +
+        ["\t{0} is {1}".format(k,v) for k,v in sorted(cluster.items())] +
+        ['']))
+
+
+@task
+@select_servers
+def test():
+    """ Test connection """
+    test_connection()
+
+
+@task
+@select_servers
+def update(tag=None):
+    """ Git pull modules in env.modules and restart instances """
+    # git checkout/pull
     for m in env.modules:
         print 'Updating {0}'.format(m)
         with cd('current/src/{0}'.format(m)):
@@ -101,19 +130,22 @@ def pull_modules(tag=None):
                 run('git checkout {0}'.format(tag))
             else:
                 run('git pull')
-
-def restart_instances():
-    """ Restarts all instances in remote buildout """
+    # restart
     instances = env.deploy_info[env.appenv]['ports']['instances']
     for instance, port in instances.items():
         run('current/bin/supervisorctl restart {0}'.format(instance))
+        print('Sleeping 5 seconds before continuing')
+        time.sleep(5)
         url = env.site_url.format(port)
-        # XXX wait 30s!
         wget(url)
 
-def deploy_buildout(tag=None):
-    """ Deploys a new buildout """
-    buildout_dir = os.path.join('releases', fmt_date())
+
+@task
+@select_servers
+def deploy(tag=None, buildout_dir=None):
+    """ Create new buildout in release dir """
+    if not buildout_dir:
+        buildout_dir = os.path.join('releases', fmt_date())
 
     if not exists('~/bin/python'):
         run('virtualenv $HOME')
@@ -129,15 +161,19 @@ def deploy_buildout(tag=None):
             run('git pull', warn_only=True)
         put(local_path=get_settings_file(),
                 remote_path='{}-settings.cfg'.format(env.appenv))
+        config = 'buildout-{}.cfg'.format(env.appenv)
         if not exists('bin/buildout'):
-            run('~/bin/python bootstrap.py -c buildout-{}.cfg'.format(env.appenv))
-        run('./bin/buildout -c buildout-{}.cfg'.format(env.appenv))
+            run('~/bin/python bootstrap.py -c {}'.format(config))
+        run('./bin/buildout -c {}'.format(config))
 
-def switch_buildout(buildout_dir=None):
-    """ Switch supervisor from old to current buildout """
+
+@task
+@select_servers
+def switch(buildout_dir=None):
+    """ Switch supervisor in current buildout dir to latest buildout """
     if not buildout_dir:
         buildout_dir = os.path.join('releases', fmt_date())
-    old_current = run("readlink ~/current", warn_only=True)
+    old_current = run("readlink current", warn_only=True)
     if old_current == buildout_dir:
         return
 
@@ -161,54 +197,16 @@ def switch_buildout(buildout_dir=None):
         for instance, port in instances.items():
             run('{}/bin/supervisorctl stop {}'.format(old_current, instance))
             run('{}/bin/supervisorctl start {}'.format(buildout_dir, instance))
-            print('Sleeping 30 seconds before continuing')
-            time.sleep(30)
+            print('Sleeping 5 seconds before continuing')
+            time.sleep(5)
             url = env.site_url.format(port)
             wget(url)
 
         run('{}/bin/supervisorctl shutdown'.format(old_current))
-        run('rm ~/current')
+        run('rm current')
 
     run('ln -s {} current'.format(buildout_dir))
 
-
-################
-# Layered tasks
-################
-
-@task
-def check_cluster(layer='acc'):
-    """ Check HA/DRBD cluster health """
-    cluster = get_master_slave(env.deploy_info[layer]['hosts'], quiet=False)
-    print('\n'.join(
-        ['', 'Current cluster info for {0}:'.format(layer)] +
-        ["\t{0} is {1}".format(k,v) for k,v in sorted(cluster.items())] +
-        ['']))
-
-@task
-@select_servers
-def test():
-    """ Test connection """
-    test_connection()
-
-@task
-@select_servers
-def update(tag=None):
-    """ Pull modules in env.modules and restart instances """
-    pull_modules(tag=tag)
-    restart_instances()
-
-@task
-@select_servers
-def deploy(tag=None):
-    """ Create new buildout in release dir """
-    deploy_buildout(tag=tag)
-
-@task
-@select_servers
-def switch(buildout_dir=None):
-    """ Switch supervisor in current buildout dir to latest buildout """
-    switch_buildout(buildout_dir=buildout_dir)
 
 @task
 @select_servers
