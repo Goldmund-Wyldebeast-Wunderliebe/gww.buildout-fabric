@@ -9,38 +9,97 @@ from fabric.operations import run
 from fabric.state import env
 
 
+#def get_config():
+#    """ Reads all kinds of stuff from buildout settings """
+#    if hasattr(env, 'config'):
+#        return env.config
+#    filename = '~/current/{0}-settings.cfg'.format(env.appenv)
+#    buf = StringIO(run('cat ' + filename, quiet=True))
+#    env.config = SafeConfigParser()
+#    env.config.readfp(buf, filename)
+#    return env.config
+#
+#def get_instance_ports():
+#    """ Reads instance ports from buildout settings """
+#    config = get_config()
+#    return [
+#            int(v)
+#            for s in sorted(config.sections())
+#            for k, v in sorted(config.items(s))
+#            if re.match('instance\d$',s) and k=='http-address'
+#            or re.match('instance\d-port$',k)
+#           ]
+#
+#def get_zodb_paths():
+#    config = get_config()
+#    return {
+#            k: v
+#            for k, v in config.items('zeo')
+#            if re.match('(file|blob)-storage$',k)
+#           }
+
+def get_settings_file():
+    appenv_info = env.deploy_info[env.appenv]
+    parts = []
+
+    parts.append("""
+        [instance]
+        username = {credentials[username]}
+        password = {credentials[password]}
+        user = {credentials[username]}:{credentials[password]}
+    """.format(**appenv_info))
+
+    for instance, port in appenv_info['ports']['instances'].items():
+        parts.append("""
+            [{instance}]
+            http-address = {port}
+        """.format(instance=instance, port=port))
+
+    if 'varnish' in appenv_info['ports']:
+        parts.append("""
+            [varnish]
+            port = {ports[varnish]}
+        """.format(**appenv_info))
+
+    if 'haproxy' in appenv_info['ports']:
+        parts.append("""
+            [haproxy-conf]
+            port = {ports[haproxy]}
+        """.format(**appenv_info))
+
+    if 'zeo' in appenv_info['ports']:
+        parts.append("""
+            [zeo]
+            zeo-address = {ipaddresses[flying-ip]}:{ports[zeo]}
+            file-storage = {zeo-base}/filestorage/Data.fs
+            blob-storage = {zeo-base}/blobstorage
+        """.format(**appenv_info))
+
+    #parts.append("""
+    #    [supervisor]
+    #    user = admin
+    #    password = ev9OpeeT
+    #""")
+
+    for section, contents in appenv_info.get('buildout-parts', {}).items():
+        part = "[{}]\n".format(section)
+        for k, v in contents.items():
+            part += "{} = {}\n".format(k,v)
+        parts.append(part)
+
+    part = "[cluster]\n"
+    for k, v in appenv_info['ipaddresses'].items():
+        part += "{} = {}\n".format(k,v)
+    parts.append(part)
+
+    text = '\n'.join(parts)
+    text = '\n'.join(line.strip() for line in text.split('\n'))
+    return StringIO(text)
+
+
 def get_modules():
     """ Returns Python get_modules for appie env """
     return env.modules
-
-def get_config():
-    """ Reads all kinds of stuff from buildout settings """
-    if hasattr(env, 'config'):
-        return env.config
-    filename = '~/current/{0}-settings.cfg'.format(env.appenv)
-    buf = StringIO(run('cat ' + filename, quiet=True))
-    env.config = SafeConfigParser()
-    env.config.readfp(buf, filename)
-    return env.config
-
-def get_instance_ports():
-    """ Reads instance ports from buildout settings """
-    config = get_config()
-    return [
-            int(v)
-            for s in sorted(config.sections())
-            for k, v in sorted(config.items(s))
-            if re.match('instance\d$',s) and k=='http-address'
-            or re.match('instance\d-port$',k)
-           ]
-
-def get_zodb_paths():
-    config = get_config()
-    return {
-            k: v
-            for k, v in config.items('zeo')
-            if re.match('(file|blob)-storage$',k)
-           }
 
 def fmt_date():
     now = datetime.now()
@@ -82,16 +141,17 @@ def check_for_existing_tag(tag):
 def select_servers(func):
     def wrapped(layer='acc', server=None, *args, **kwargs):
         servers = env.deploy_info[layer]['hosts']
+        cluster = get_master_slave(servers)
         if server:
             matches = [s for s in servers if server in s]
             if matches:
                 servers = matches
             else:
-                cluster = get_master_slave(servers)
                 servers = [cluster[server]]
         for host in servers:
             print host
-            with settings(host_string=host, appenv=layer):
+            is_master = host==cluster['master']
+            with settings(host_string=host, appenv=layer, is_master=is_master):
                 func(*args, **kwargs)
     wrapped.__name__ = func.__name__
     wrapped.__doc__ = func.__doc__
