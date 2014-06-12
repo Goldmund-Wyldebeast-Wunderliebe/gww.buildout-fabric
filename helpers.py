@@ -9,35 +9,6 @@ from fabric.operations import run
 from fabric.state import env
 
 
-#def get_config():
-#    """ Reads all kinds of stuff from buildout settings """
-#    if hasattr(env, 'config'):
-#        return env.config
-#    filename = '~/current/{0}-settings.cfg'.format(env.appenv)
-#    buf = StringIO(run('cat ' + filename, quiet=True))
-#    env.config = SafeConfigParser()
-#    env.config.readfp(buf, filename)
-#    return env.config
-#
-#def get_instance_ports():
-#    """ Reads instance ports from buildout settings """
-#    config = get_config()
-#    return [
-#            int(v)
-#            for s in sorted(config.sections())
-#            for k, v in sorted(config.items(s))
-#            if re.match('instance\d$',s) and k=='http-address'
-#            or re.match('instance\d-port$',k)
-#           ]
-#
-#def get_zodb_paths():
-#    config = get_config()
-#    return {
-#            k: v
-#            for k, v in config.items('zeo')
-#            if re.match('(file|blob)-storage$',k)
-#           }
-
 def get_settings_file():
     appenv_info = env.deploy_info[env.appenv]
     parts = []
@@ -75,12 +46,6 @@ def get_settings_file():
             blob-storage = {zeo-base}/blobstorage
         """.format(**appenv_info))
 
-    #parts.append("""
-    #    [supervisor]
-    #    user = admin
-    #    password = ev9OpeeT
-    #""")
-
     for section, contents in appenv_info.get('buildout-parts', {}).items():
         part = "[{}]\n".format(section)
         for k, v in contents.items():
@@ -97,27 +62,20 @@ def get_settings_file():
     return StringIO(text)
 
 
-def get_modules():
-    """ Returns Python get_modules for appie env """
-    return env.modules
-
 def fmt_date():
     now = datetime.now()
     return now.strftime('%Y-%m-%d')
 
 def wget(url, retry=4, sleep=30):
     """ Multiple wget requests with a timeout """
-
-    i = 0
-    while i < retry:
-
+    for i in range(retry):
         rv = run('wget -SO- -O /dev/null {}'.format(url), warn_only=True)
-        if '200 OK' in rv:
-            break
-
-        print '[{0}/{1}] Sleeping for {2} secs before trying'.format(i+1, retry, sleep)
+        for expected_status in '200 OK', '404: Not Found':
+            if expected_status in rv:
+                return
+        print '[{0}/{1}] Sleeping for {2} secs before trying'.format(
+                i+1, retry, sleep)
         time.sleep(sleep)
-        i += 1
 
 def replace_tag(tag, lines):
     last = lines[-1]
@@ -131,7 +89,7 @@ def replace_tag(tag, lines):
     return ' '.join(lines)
 
 def check_for_existing_tag(tag):
-    tags_output = local('git tag'.format(tag), capture=True)
+    tags_output = local('git tag', capture=True)
     tags = tags_output.split('\n')  
 
     if tag in tags:

@@ -11,7 +11,8 @@ from fabric.contrib.files import exists
 from .helpers import (
         test_connection, get_master_slave, select_servers,
         get_settings_file,
-        wget, fmt_date, replace_tag, get_modules, check_for_existing_tag,
+        wget, fmt_date,
+        replace_tag, check_for_existing_tag,
         )
 
 
@@ -36,15 +37,19 @@ def prepare_release(tag=None):
     buildout_path = os.getcwd()
     modules = env.modules
 
+    existing_tag = False
     for m in modules:
         with lcd('{0}/src/{1}'.format(buildout_path, m)):
+            if check_for_existing_tag(tag):
+                print('Git module {0} already tagged with tag {1}'.format(m, tag))
+                existing_tag = True
 
+    for m in modules:
+        with lcd('{0}/src/{1}'.format(buildout_path, m)):
             if not check_for_existing_tag(tag):
                 local('''sed -i.org 's/version = .*/version = "{}"/' setup.py'''.format(tag))
                 git_tag(tag)
                 print('Tagged git module {0} with tag {1}'.format(m, tag))
-            else:
-                print('Git module {0} already tagged with tag {1}'.format(m, tag))
 
     old_settings = '{}/prd-sources.cfg'.format(buildout_path)
     new_settings = '{}/prd-sources.cfg.new'.format(buildout_path)
@@ -86,7 +91,7 @@ def prepare_release(tag=None):
 @task
 def pull_modules(tag=None):
     """ Git pull module on remote buildout """
-    for m in get_modules():
+    for m in env.modules:
         print 'Updating {0}'.format(m)
         with cd('current/src/{0}'.format(m)):
             if tag:
