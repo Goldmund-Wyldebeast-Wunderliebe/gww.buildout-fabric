@@ -66,6 +66,7 @@ def fmt_date():
     now = datetime.now()
     return now.strftime('%Y-%m-%d')
 
+
 def wget(url, retry=4, sleep=30):
     """ Multiple wget requests with a timeout """
     for i in range(retry):
@@ -76,6 +77,7 @@ def wget(url, retry=4, sleep=30):
         print '[{0}/{1}] Sleeping for {2} secs before trying'.format(
                 i+1, retry, sleep)
         time.sleep(sleep)
+
 
 def replace_tag(tag, lines):
     last = lines[-1]
@@ -88,12 +90,10 @@ def replace_tag(tag, lines):
     lines.append('\n')
     return ' '.join(lines)
 
-def check_for_existing_tag(tag):
-    tags_output = local('git tag', capture=True)
-    tags = tags_output.split('\n')  
 
-    if tag in tags:
-        return True
+def check_for_existing_tag(tag, repo='.'):
+    tags_output = local('( cd {} && git tag )'.format(repo), capture=True)
+    return tag in tags_output.split()
 
 
 def select_servers(func):
