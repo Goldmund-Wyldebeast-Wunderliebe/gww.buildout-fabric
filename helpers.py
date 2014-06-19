@@ -1,5 +1,6 @@
 import time
 import re
+from jinja2 import Environment, FileSystemLoader
 from StringIO import StringIO
 from ConfigParser import SafeConfigParser
 from datetime import datetime
@@ -11,54 +12,9 @@ from fabric.state import env
 
 def get_settings_file():
     appenv_info = env.deploy_info[env.appenv]
-    parts = []
-
-    parts.append("""
-        [instance]
-        username = {credentials[username]}
-        password = {credentials[password]}
-        user = {credentials[username]}:{credentials[password]}
-    """.format(**appenv_info))
-
-    for instance, port in appenv_info['ports']['instances'].items():
-        parts.append("""
-            [{instance}]
-            http-address = {port}
-        """.format(instance=instance, port=port))
-
-    if 'varnish' in appenv_info['ports']:
-        parts.append("""
-            [varnish]
-            port = {ports[varnish]}
-        """.format(**appenv_info))
-
-    if 'haproxy' in appenv_info['ports']:
-        parts.append("""
-            [haproxy-conf]
-            port = {ports[haproxy]}
-        """.format(**appenv_info))
-
-    if 'zeo' in appenv_info['ports']:
-        parts.append("""
-            [zeo]
-            zeo-address = {ipaddresses[flying-ip]}:{ports[zeo]}
-            file-storage = {zeo-base}/filestorage/Data.fs
-            blob-storage = {zeo-base}/blobstorage
-        """.format(**appenv_info))
-
-    for section, contents in appenv_info.get('buildout-parts', {}).items():
-        part = "[{}]\n".format(section)
-        for k, v in contents.items():
-            part += "{} = {}\n".format(k,v)
-        parts.append(part)
-
-    part = "[cluster]\n"
-    for k, v in appenv_info['ipaddresses'].items():
-        part += "{} = {}\n".format(k,v)
-    parts.append(part)
-
-    text = '\n'.join(parts)
-    text = '\n'.join(line.strip() for line in text.split('\n'))
+    jenv = Environment(loader=FileSystemLoader('.'))
+    template = jenv.get_template('buildout-template.cfg')
+    text = template.render(appenv_info)
     return StringIO(text)
 
 

@@ -159,9 +159,8 @@ def deploy(tag=None, buildout_dir=None):
             run('git checkout {}'.format(tag))
         else:
             run('git pull', warn_only=True)
-        put(local_path=get_settings_file(),
-                remote_path='{}-settings.cfg'.format(env.appenv))
         config = 'buildout-{}.cfg'.format(env.appenv)
+        put(local_path=get_settings_file(), remote_path=config)
         if not exists('bin/buildout'):
             run('~/bin/python bootstrap.py -c {}'.format(config))
         run('./bin/buildout -c {}'.format(config))
