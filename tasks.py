@@ -154,11 +154,9 @@ def deploy(tag=None, buildout_dir=None):
     if not exists(buildout_dir):
         run('git clone {0} {1}'.format(env.buildout_uri, buildout_dir))
     with cd(buildout_dir):
-        run('git fetch')
+        run('git pull', warn_only=True)
         if tag:
             run('git checkout {}'.format(tag))
-        else:
-            run('git pull', warn_only=True)
         config = 'buildout-{}.cfg'.format(env.appenv)
         put(local_path=get_settings_file(), remote_path=config)
         if not exists('bin/buildout'):
