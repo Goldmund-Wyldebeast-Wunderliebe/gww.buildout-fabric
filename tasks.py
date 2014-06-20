@@ -11,7 +11,7 @@ from fabric.contrib.files import exists
 from .helpers import (
         test_connection, get_master_slave, select_servers,
         get_settings_file,
-        wget, fmt_date,
+        wget,
         replace_tag, check_for_existing_tag,
         )
 
@@ -26,7 +26,8 @@ def prepare_release(tag=None):
     """ Git tag all modules in env.modules, pin tags in prd-sources.cfg and tag buildout """
 
     if not tag:
-        tag = '{}-{}'.format(env.appenv, fmt_date())
+        now = datetime.now()
+        tag = '{}-{}'.format(env.appenv, now.strftime('%Y-%m-%d'))
 
     def git_tag(tag):
         # XXX why commit? and why tag -f?
@@ -145,7 +146,7 @@ def update(tag=None):
 def deploy(tag=None, buildout_dir=None):
     """ Create new buildout in release dir """
     if not buildout_dir:
-        buildout_dir = os.path.join('releases', fmt_date())
+        buildout_dir = env.deploy_info[env.appenv]['buildout'] or 'buildout'
 
     if not exists('~/bin/python'):
         run('virtualenv $HOME')
@@ -169,7 +170,7 @@ def deploy(tag=None, buildout_dir=None):
 def switch(buildout_dir=None):
     """ Switch supervisor in current buildout dir to latest buildout """
     if not buildout_dir:
-        buildout_dir = os.path.join('releases', fmt_date())
+        buildout_dir = env.deploy_info[env.appenv]['buildout'] or 'buildout'
     old_current = run("readlink current", warn_only=True)
     if old_current == buildout_dir:
         return

@@ -18,11 +18,6 @@ def get_settings_file():
     return StringIO(text)
 
 
-def fmt_date():
-    now = datetime.now()
-    return now.strftime('%Y-%m-%d')
-
-
 def wget(url, retry=4, sleep=30):
     """ Multiple wget requests with a timeout """
     for i in range(retry):
@@ -53,7 +48,7 @@ def check_for_existing_tag(tag, repo='.'):
 
 
 def select_servers(func):
-    def wrapped(layer='acc', server=None, *args, **kwargs):
+    def wrapped(layer='default', server=None, *args, **kwargs):
         servers = env.deploy_info[layer]['hosts']
         cluster = get_master_slave(servers)
         if server:
