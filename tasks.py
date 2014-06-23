@@ -122,8 +122,7 @@ def do_update(tag=None, buildout_dir=None):
         run('current/bin/supervisorctl restart {0}'.format(instance))
         print('Sleeping 5 seconds before continuing')
         time.sleep(5)
-        url = env.site_url.format(port)
-        wget(url)
+        wget('http://localhost:{}/{}/'.format(port, appenv_info['site_id']))
 
 
 def do_deploy(tag=None, buildout_dir=None):
@@ -164,32 +163,29 @@ def do_switch(buildout_dir=None):
         old_buildout = run("readlink current", warn_only=True)
     if current_link and old_buildout and old_buildout != buildout_dir:
         # this is the hard case. stop stuff on old buildout, start it here.
+        # Gracefully migrate instances from old to new
+        services = run('{}/bin/supervisorctl status'.format(old_buildout))
+        run('{}/bin/supervisord'.format(buildout_dir), warn_only=True)
+        print('Sleeping 15 seconds before continuing')
+        time.sleep(15)
+        for service in [s.split()[0] for s in services.split('\n')]:
+            run('{}/bin/supervisorctl stop {}'.format(
+                old_buildout, service))
+            run('{}/bin/supervisorctl start {}'.format(
+                buildout_dir, service))
+            port = appenv_info['instances']['ports'].get(service)
+            if port:
+                print('Sleeping 5 seconds before continuing')
+                time.sleep(5)
+                wget('http://localhost:{}/{}/'.format(
+                    port, appenv_info['site_id']))
         run('{}/bin/supervisorctl shutdown'.format(old_buildout))
-        run('rm {}'.format(current_link))
-        run('{}/bin/supervisord'.format(buildout_dir))
-        if zeo and zeo.base and env.is_master:
+        run('{}/bin/supervisorctl status'.format(buildout_dir))
+
+        if appenv_info.get('zeo',{}).get('base') and env.is_master:
             # zeo not running from supervisor
             run('{}/bin/zeo stop'.format(old_buildout))
             run('{}/bin/zeo start'.format(buildout_dir))
-
-        # XXX this stops all old instances before starting the new ones.
-        # A more graceful approach is wanted.
-        if False:
-            run('{}/bin/supervisord'.format(buildout_dir), warn_only=True)
-            time.sleep(15)
-            services = 'crashmail haproxy varnish'
-            run('{}/bin/supervisorctl stop {}'.format(old_buildout, services))
-            run('{}/bin/supervisorctl start {}'.format(buildout_dir, services))
-            instances = appenv_info['ports']['instances']
-            for instance, port in instances.items():
-                run('{}/bin/supervisorctl stop {}'.format(
-                    old_buildout, instance))
-                run('{}/bin/supervisorctl start {}'.format(
-                    buildout_dir, instance))
-                print('Sleeping 5 seconds before continuing')
-                time.sleep(5)
-                url = env.site_url.format(port)
-                wget(url)
 
     else:
         # not current_link, so not timestamped. just (re)start everything.
@@ -202,7 +198,8 @@ def do_switch(buildout_dir=None):
             run('{}/bin/zeo restart'.format(buildout_dir))
 
     if current_link:
-        run('ln -s ~/{} {}'.format(buildout_dir, current_link))
+        run('rm -f {}'.format(current_link))
+        run('ln -s {} {}'.format(buildout_dir, current_link))
 
     webserver = appenv_info.get('webserver')
     sitename = appenv_info.get('sitename')
