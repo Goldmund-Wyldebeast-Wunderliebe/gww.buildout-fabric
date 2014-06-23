@@ -199,8 +199,7 @@ def do_switch(buildout_dir=None):
             buildout_dir))
         # zeo not running from supervisor
         if appenv_info.get('zeo',{}).get('base') and env.is_master:
-            #if not zeorunning:
-                run('{}/bin/zeo start'.format(buildout_dir))
+            run('{}/bin/zeo restart'.format(buildout_dir))
 
     if current_link:
         run('ln -s ~/{} {}'.format(buildout_dir, current_link))
