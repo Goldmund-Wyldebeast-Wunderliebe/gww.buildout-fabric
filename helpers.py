@@ -10,10 +10,10 @@ from fabric.operations import run
 from fabric.state import env
 
 
-def get_settings_file():
+def config_template(filename):
     appenv_info = env.deploy_info[env.appenv]
-    jenv = Environment(loader=FileSystemLoader('.'))
-    template = jenv.get_template('buildout-template.cfg')
+    jenv = Environment(loader=FileSystemLoader('templates'))
+    template = jenv.get_template(filename)
     text = template.render(appenv_info)
     return StringIO(text)
 

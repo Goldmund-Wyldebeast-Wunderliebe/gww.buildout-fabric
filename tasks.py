@@ -10,7 +10,7 @@ from fabric.contrib.files import exists
 
 from .helpers import (
         test_connection, get_master_slave, select_servers,
-        get_settings_file,
+        config_template,
         wget,
         replace_tag, check_for_existing_tag,
         )
@@ -102,27 +102,12 @@ def prepare_release(tag=None):
 # Layered tasks
 ################
 
-@task
-def check_cluster(layer='acc'):
-    """ Check HA/DRBD cluster health """
-    cluster = get_master_slave(env.deploy_info[layer]['hosts'], quiet=False)
-    print('\n'.join(
-        ['', 'Current cluster info for {0}:'.format(layer)] +
-        ["\t{0} is {1}".format(k,v) for k,v in sorted(cluster.items())] +
-        ['']))
-
-
-@task
-@select_servers
-def test():
-    """ Test connection """
-    test_connection()
-
-
-@task
-@select_servers
-def update(tag=None):
+def do_update(tag=None, buildout_dir=None):
     """ Git pull modules in env.modules and restart instances """
+    appenv_info = env.deploy_info[env.appenv]
+    if not buildout_dir:
+        buildout_dir = appenv_info['buildout'] or 'buildout'
+
     # git checkout/pull
     for m in env.modules:
         print 'Updating {0}'.format(m)
@@ -132,7 +117,7 @@ def update(tag=None):
             else:
                 run('git pull')
     # restart
-    instances = env.deploy_info[env.appenv]['ports']['instances']
+    instances = appenv_info['ports']['instances']
     for instance, port in instances.items():
         run('current/bin/supervisorctl restart {0}'.format(instance))
         print('Sleeping 5 seconds before continuing')
@@ -141,12 +126,11 @@ def update(tag=None):
         wget(url)
 
 
-@task
-@select_servers
-def deploy(tag=None, buildout_dir=None):
+def do_deploy(tag=None, buildout_dir=None):
     """ Create new buildout in release dir """
+    appenv_info = env.deploy_info[env.appenv]
     if not buildout_dir:
-        buildout_dir = env.deploy_info[env.appenv]['buildout'] or 'buildout'
+        buildout_dir = appenv_info['buildout'] or 'buildout'
 
     if not exists('~/bin/python'):
         run('virtualenv $HOME')
@@ -159,61 +143,129 @@ def deploy(tag=None, buildout_dir=None):
         if tag:
             run('git checkout {}'.format(tag))
         config = 'buildout-{}.cfg'.format(env.appenv)
-        put(local_path=get_settings_file(), remote_path=config)
+        put(local_path=config_template('buildout-layer.cfg'),
+                remote_path=config)
         if not exists('bin/buildout'):
             run('~/bin/python bootstrap.py -c {}'.format(config))
         run('./bin/buildout -c {}'.format(config))
 
+    if appenv_info.get('auto_switch', True):
+        do_switch(buildout_dir=buildout_dir)
 
-@task
-@select_servers
-def switch(buildout_dir=None):
+
+def do_switch(buildout_dir=None):
     """ Switch supervisor in current buildout dir to latest buildout """
+    appenv_info = env.deploy_info[env.appenv]
     if not buildout_dir:
-        buildout_dir = env.deploy_info[env.appenv]['buildout'] or 'buildout'
-    old_current = run("readlink current", warn_only=True)
-    if old_current == buildout_dir:
-        return
+        buildout_dir = appenv_info.get('buildout') or 'buildout'
 
-    if old_current.failed:
+    current_link = appenv_info.get('current_link')
+    if current_link:
+        old_buildout = run("readlink current", warn_only=True)
+    if current_link and old_buildout and old_buildout != buildout_dir:
+        # this is the hard case. stop stuff on old buildout, start it here.
+        run('{}/bin/supervisorctl shutdown'.format(old_buildout))
+        run('rm {}'.format(current_link))
         run('{}/bin/supervisord'.format(buildout_dir))
-        if env.is_master:
+        if zeo and zeo.base and env.is_master:
+            # zeo not running from supervisor
+            run('{}/bin/zeo stop'.format(old_buildout))
             run('{}/bin/zeo start'.format(buildout_dir))
+
+        # XXX this stops all old instances before starting the new ones.
+        # A more graceful approach is wanted.
+        if False:
+            run('{}/bin/supervisord'.format(buildout_dir), warn_only=True)
+            time.sleep(15)
+            services = 'crashmail haproxy varnish'
+            run('{}/bin/supervisorctl stop {}'.format(old_buildout, services))
+            run('{}/bin/supervisorctl start {}'.format(buildout_dir, services))
+            instances = appenv_info['ports']['instances']
+            for instance, port in instances.items():
+                run('{}/bin/supervisorctl stop {}'.format(
+                    old_buildout, instance))
+                run('{}/bin/supervisorctl start {}'.format(
+                    buildout_dir, instance))
+                print('Sleeping 5 seconds before continuing')
+                time.sleep(5)
+                url = env.site_url.format(port)
+                wget(url)
 
     else:
-        if env.is_master:
-            run('{}/bin/zeo stop'.format(old_current))
-            run('{}/bin/zeo start'.format(buildout_dir))
-        run('{}/bin/supervisord'.format(buildout_dir), warn_only=True)
-        time.sleep(15)
+        # not current_link, so not timestamped. just (re)start everything.
+        # or first deploy on timestamped series. just start everything.
+        # or redeploy to today's buildout. just restart everything.
+        run('{0}/bin/supervisorctl reload || {0}/bin/supervisord'.format(
+            buildout_dir))
+        # zeo not running from supervisor
+        if appenv_info.get('zeo',{}).get('base') and env.is_master:
+            #if not zeorunning:
+                run('{}/bin/zeo start'.format(buildout_dir))
 
-        services = 'crashmail haproxy varnish'
-        run('{}/bin/supervisorctl stop {}'.format(old_current, services))
-        run('{}/bin/supervisorctl start {}'.format(buildout_dir, services))
+    if current_link:
+        run('ln -s ~/{} {}'.format(buildout_dir, current_link))
 
-        instances = env.deploy_info[env.appenv]['ports']['instances']
-        for instance, port in instances.items():
-            run('{}/bin/supervisorctl stop {}'.format(old_current, instance))
-            run('{}/bin/supervisorctl start {}'.format(buildout_dir, instance))
-            print('Sleeping 5 seconds before continuing')
-            time.sleep(5)
-            url = env.site_url.format(port)
-            wget(url)
-
-        run('{}/bin/supervisorctl shutdown'.format(old_current))
-        run('rm current')
-
-    run('ln -s {} current'.format(buildout_dir))
+    webserver = appenv_info.get('webserver')
+    sitename = appenv_info.get('sitename')
+    if webserver and sitename:
+        put(local_path=config_template('{}.conf'.format(webserver)),
+                remote_path='~/sites-enabled/{}'.format(sitename))
+        run('sudo /etc/init.d/{} reload'.format(webserver))
 
 
-@task
-@select_servers
-def copy():
+def copy(buildout_dir=None):
     """ Copy database from server """
-    zeo_base = env.deploy_info[env.appenv]['zeo-base']
+    appenv_info = env.deploy_info[env.appenv]
+    if not buildout_dir:
+        buildout_dir = appenv_info.get('buildout') or 'buildout'
+
+    if not env.is_master:
+        return
+    if 'zeo' in appenv_info:
+        zeo_base = appenv_info['zeo']['base']  # fails if zeo is separate
+    else:
+        zeo_base = os.path.join(buildout_dir, 'var')
     local('rm -rf var/filestorage var/blobstorage')
     get(remote_path=os.path.join(zeo_base, 'filestorage', 'Data.fs'),
             local_path='var/filestorage/Data.fs')
     get(remote_path=os.path.join(zeo_base, 'blobstorage'),
             local_path='var/blobstorage')
+
+
+################
+
+@task
+def check_cluster(layer='default'):
+    """ Check HA/DRBD cluster health """
+    cluster = get_master_slave(env.deploy_info[layer]['hosts'], quiet=False)
+    print('\n'.join(
+        ['', 'Current cluster info for {0}:'.format(layer)] +
+        ["\t{0} is {1}".format(k,v) for k,v in sorted(cluster.items())] +
+        ['']))
+
+@task
+@select_servers
+def test():
+    """ Test connection """
+    test_connection()
+
+@task
+@select_servers
+def update(*args, **kwargs):
+    do_update(*args, **kwargs)
+
+@task
+@select_servers
+def deploy(*args, **kwargs):
+    do_deploy(*args, **kwargs)
+
+@task
+@select_servers
+def switch(*args, **kwargs):
+    do_switch(*args, **kwargs)
+
+@task
+@select_servers
+def copy(*args, **kwargs):
+    do_copy(*args, **kwargs)
 
