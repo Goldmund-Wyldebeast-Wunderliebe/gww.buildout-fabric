@@ -213,7 +213,7 @@ def do_switch(buildout_dir=None):
         run('sudo /etc/init.d/{} reload'.format(webserver))
 
 
-def copy(buildout_dir=None):
+def do_copy(buildout_dir=None):
     """ Copy database from server """
     appenv_info = env.deploy_info[env.appenv]
     if not buildout_dir:
