@@ -106,17 +106,21 @@ def do_update(tag=None, buildout_dir=None):
     if not buildout_dir:
         buildout_dir = appenv_info['buildout'] or 'buildout'
 
+    modules = appenv_info.get('modules')
+    instances = appenv_info.get('instances')
+    if not (modules and instances):
+        return
+
     # git checkout/pull
-    for m in appenv_info.get('modules', []):
-        print 'Updating {0}'.format(m)
-        with cd('current/src/{0}'.format(m)):
+    for module, source in modules.items():
+        print 'Updating {}'.format(module)
+        with cd('{}/src/{}'.format(buildout_dir, module)):
             run('git pull', warn_only=True)
             if tag:
                 run('git checkout {}'.format(tag))
     # restart
-    instances = appenv_info['ports']['instances']
-    for instance, port in instances.items():
-        run('current/bin/supervisorctl restart {}'.format(instance))
+    for instance, port in instances['ports'].items():
+        run('{}/bin/supervisorctl restart {}'.format(buildout_dir, instance))
         print('Sleeping 5 seconds before continuing')
         time.sleep(5)
         wget('http://localhost:{}/{}/'.format(port, appenv_info['site_id']))
@@ -225,8 +229,10 @@ def do_copy(buildout_dir=None):
 ################
 
 @task
-def check_cluster(layer='default'):
+def check_cluster(layer=None):
     """ Check HA/DRBD cluster health """
+    if layer is None:
+        layer = env.deploy_info['default']
     cluster = get_master_slave(env.deploy_info[layer]['hosts'], quiet=False)
     print('\n'.join(
         ['', 'Current cluster info for {0}:'.format(layer)] +

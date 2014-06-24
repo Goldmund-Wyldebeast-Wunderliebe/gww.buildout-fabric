@@ -43,7 +43,9 @@ def check_for_existing_tag(tag, repo='.'):
 
 
 def select_servers(func):
-    def wrapped(layer='default', server=None, *args, **kwargs):
+    def wrapped(layer=None, server=None, *args, **kwargs):
+        if layer is None:
+            layer = env.deploy_info['default']
         servers = env.deploy_info[layer]['hosts']
         cluster = get_master_slave(servers)
         if server:
