@@ -160,13 +160,17 @@ def do_switch(buildout_dir=None):
     current_link = appenv_info.get('current_link')
     if current_link:
         old_buildout = run("readlink current", warn_only=True)
-    if current_link and old_buildout and old_buildout != buildout_dir:
+
+    if current_link and old_buildout:
         # this is the hard case. stop stuff on old buildout, start it here.
+        # NB: old_buildout might be same as buildout_dir, if redeploying or
+        # updating today's buildout.
         # Gracefully migrate instances from old to new
         services = run('{}/bin/supervisorctl status'.format(old_buildout))
-        run('{}/bin/supervisord'.format(buildout_dir), warn_only=True)
-        print('Sleeping 15 seconds before continuing')
-        time.sleep(15)
+        if old_buildout != buildout_dir:
+            run('{}/bin/supervisord'.format(buildout_dir), warn_only=True)
+            print('Sleeping 15 seconds before continuing')
+            time.sleep(15)
         for service in [s.split()[0] for s in services.split('\n')]:
             run('{}/bin/supervisorctl stop {}'.format(
                 old_buildout, service))
@@ -178,7 +182,8 @@ def do_switch(buildout_dir=None):
                 time.sleep(5)
                 wget('http://localhost:{}/{}/'.format(
                     port, appenv_info['site_id']))
-        run('{}/bin/supervisorctl shutdown'.format(old_buildout))
+        if old_buildout != buildout_dir:
+            run('{}/bin/supervisorctl shutdown'.format(old_buildout))
         run('{}/bin/supervisorctl status'.format(buildout_dir))
 
         if appenv_info.get('zeo',{}).get('base') and env.is_master:
@@ -189,7 +194,6 @@ def do_switch(buildout_dir=None):
     else:
         # not current_link, so not timestamped. just (re)start everything.
         # or first deploy on timestamped series. just start everything.
-        # or redeploy to today's buildout. just restart everything.
         run('{0}/bin/supervisorctl reload || {0}/bin/supervisord'.format(
             buildout_dir))
         # zeo not running from supervisor
