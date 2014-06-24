@@ -9,12 +9,11 @@ from fabric.decorators import task
 from fabric.contrib.files import exists
 
 from .helpers import (
-        test_connection, get_master_slave, select_servers,
         config_template,
         wget,
         replace_tag, check_for_existing_tag,
+        get_master_slave, select_servers,
         )
-
 
 
 ################
@@ -103,7 +102,6 @@ def prepare_release(tag=None):
 ################
 
 def do_update(tag=None, buildout_dir=None):
-    """ Git pull modules in env.modules and restart instances """
     appenv_info = env.deploy_info[env.appenv]
     if not buildout_dir:
         buildout_dir = appenv_info['buildout'] or 'buildout'
@@ -126,7 +124,6 @@ def do_update(tag=None, buildout_dir=None):
 
 
 def do_deploy(tag=None, buildout_dir=None):
-    """ Create new buildout in release dir """
     appenv_info = env.deploy_info[env.appenv]
     if not buildout_dir:
         buildout_dir = appenv_info['buildout'] or 'buildout'
@@ -153,7 +150,6 @@ def do_deploy(tag=None, buildout_dir=None):
 
 
 def do_switch(buildout_dir=None):
-    """ Switch supervisor in current buildout dir to latest buildout """
     appenv_info = env.deploy_info[env.appenv]
     if not buildout_dir:
         buildout_dir = appenv_info.get('buildout') or 'buildout'
@@ -210,7 +206,6 @@ def do_switch(buildout_dir=None):
 
 
 def do_copy(buildout_dir=None):
-    """ Copy database from server """
     appenv_info = env.deploy_info[env.appenv]
     if not buildout_dir:
         buildout_dir = appenv_info.get('buildout') or 'buildout'
@@ -242,26 +237,33 @@ def check_cluster(layer='default'):
 @task
 @select_servers
 def test():
-    """ Test connection """
-    test_connection()
+    """ Test if the connection is working """
+    print(u'Testing {} {} connection for {}'.format(
+        env.app, env.appenv, env.host_string))
+    run('hostname ; whoami ; pwd')
+
 
 @task
 @select_servers
 def update(*args, **kwargs):
+    """ Git pull modules in env.modules and restart instances """
     do_update(*args, **kwargs)
 
 @task
 @select_servers
 def deploy(*args, **kwargs):
+    """ Create new buildout in release dir """
     do_deploy(*args, **kwargs)
 
 @task
 @select_servers
 def switch(*args, **kwargs):
+    """ Switch supervisor in current buildout dir to latest buildout """
     do_switch(*args, **kwargs)
 
 @task
 @select_servers
 def copy(*args, **kwargs):
+    """ Copy database from server """
     do_copy(*args, **kwargs)
 

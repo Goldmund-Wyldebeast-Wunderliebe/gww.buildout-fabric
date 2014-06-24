@@ -1,13 +1,7 @@
 import time
-import re
 from jinja2 import Environment, FileSystemLoader
 from StringIO import StringIO
-from ConfigParser import SafeConfigParser
-from datetime import datetime
-from fabric.api import cd, env, local, lcd, run, sudo, settings
-from fabric.context_managers import settings
-from fabric.operations import run
-from fabric.state import env
+from fabric.api import env, local, run, settings
 
 
 def config_template(filename):
@@ -65,13 +59,6 @@ def select_servers(func):
     wrapped.__name__ = func.__name__
     wrapped.__doc__ = func.__doc__
     return wrapped
-
-
-def test_connection():
-    """ Task to test if the connection is working """
-
-    print(u'Testing fabric connection for {0}'.format(env.host_string))
-    run('hostname ; whoami ; pwd')
 
 
 def get_master_slave(hosts, quiet=True):
