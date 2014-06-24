@@ -26,23 +26,6 @@ def wget(url, retry=4, sleep=30):
         time.sleep(sleep)
 
 
-def replace_tag(tag, lines):
-    last = lines[-1]
-
-    if last.startswith('rev='):
-        lines[-1] = 'rev={}'.format(tag)
-    else:
-        lines.append('rev={}'.format(tag))
-
-    lines.append('\n')
-    return ' '.join(lines)
-
-
-def check_for_existing_tag(tag, repo='.'):
-    tags_output = local('( cd {} && git tag )'.format(repo), capture=True)
-    return tag in tags_output.split()
-
-
 def select_servers(func):
     def wrapped(layer=None, server=None, *args, **kwargs):
         if layer is None:
