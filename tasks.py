@@ -107,17 +107,16 @@ def do_update(tag=None, buildout_dir=None):
         buildout_dir = appenv_info['buildout'] or 'buildout'
 
     # git checkout/pull
-    for m in env.modules:
+    for m in appenv_info.get('modules', []):
         print 'Updating {0}'.format(m)
         with cd('current/src/{0}'.format(m)):
+            run('git pull', warn_only=True)
             if tag:
-                run('git checkout {0}'.format(tag))
-            else:
-                run('git pull')
+                run('git checkout {}'.format(tag))
     # restart
     instances = appenv_info['ports']['instances']
     for instance, port in instances.items():
-        run('current/bin/supervisorctl restart {0}'.format(instance))
+        run('current/bin/supervisorctl restart {}'.format(instance))
         print('Sleeping 5 seconds before continuing')
         time.sleep(5)
         wget('http://localhost:{}/{}/'.format(port, appenv_info['site_id']))
