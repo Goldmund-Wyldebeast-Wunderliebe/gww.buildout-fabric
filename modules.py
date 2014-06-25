@@ -1,11 +1,14 @@
 """ Specific Fabric tasks """
 
 import os
+import re
 from datetime import datetime
 import itertools
 
 from fabric.api import env, local, lcd
 from fabric.decorators import task
+
+from .helpers import select_servers
 
 
 """
@@ -24,34 +27,51 @@ Two workflows for getting modules to the remote (tst/acc/prd) buildout.
 """
 
 
-def git_command(repo, command):
-    return local('( cd {} && git {} )'.format(repo, command), capture=True)
+class MLGR(object):
+    """ my little git repo class... will be refactored later """
+    tag_pattern = re.compile('([^(), \s]+)')
 
-def current_tags(repo):
-    return git_command(repo, 'tag').split()
+    def __init__(self, repo):
+        self.repo = repo
+        self.is_repo = os.path.isdir(os.path.join(repo, '.git'))
+        if not self.is_repo:
+            return
+        self.all_tags = self.git_command('tag').split()
+        self.top_tags = [name
+                for name in self.tag_pattern.findall(self.git_command(
+                    'log', '-n1', '--pretty=format:%d'))
+                if name in self.all_tags]
 
-def git_add_tag(repo, tag, comment=None):
-    git_command(repo, 'tag {} -m "{}"'.format(tag, comment or ''))
-    git_command(repo, 'push --tags')
+    def __nonzero__(self):
+        return self.is_repo
 
-def git_hash(repo, tag=''):
-    return git_command(repo, 'log -n1 --pretty=format:%h {}'.format(tag))
+    def add_tag(repo, tag, comment=None):
+        self.git_command('tag', tag, '-m', comment or '')
+        self.git_command('push', '--tags')
+
+    def git_command(self, *command):
+        return local(
+                '( cd "{}" && git {} )'.format(
+                    self.repo, " ".join('"%s"'%a for a in command)),
+                capture=True)
+
+    def __repr__(self):
+        return self.repo
+
 
 def try_and_tag_all(tag, repositories, comment=None):
     """ returns list of conflicting modules if not succesful """
     repos_with_this_tag = []
     repos_with_conflict = []
     for repo in repositories:
-        if tag in current_tags(repo):
+        if tag in repo.top_tags:
+            repos_with_conflict.append(repo)
+        elif tag in repo.all_tags:
             repos_with_this_tag.append(repo)
-            if git_hash(repo) != git_hash(repo, tag):
-                repos_with_conflict.append(repo)
     if repos_with_conflict:
         return repos_with_conflict
     for repo in repositories:
-        if repo in repos_with_this_tag:
-            continue
-        git_add_tag(repo, tag, comment=comment)
+        repo.add_tag(tag, comment=comment)
     return None
 
 def invent_tag():
@@ -70,6 +90,7 @@ def make_tags(tag=None, comment=None):
     appenv_info = env.deploy_info[env.appenv]
     modules = appenv_info.get('modules')
     repositories = ['.'] + ['src/'+m for m in modules]
+    repositories = [MLGR(repo) for repo in repositories]
 
     if tag:
         conflicts = try_and_tag_all(tag, repositories, comment=comment)
@@ -77,57 +98,39 @@ def make_tags(tag=None, comment=None):
             print("Conflict for tag {} in module {}".format(
                 tag, ", ".join(conflicts)))
             ERROR
-        return tag
+        break
     else:
         for tag in invent_tag():
             conflicts = try_and_tag_all(tag, repositories, comment=comment)
             if not conflicts:
-                return tag
+                break
+    print 'tag {} is everywhere now'.format(tag)
+
+
+@task
+def check_versions():
+    from ConfigParser import SafeConfigParser
+    versions = SafeConfigParser()
+    versions.read('versions.cfg')
+    if not versions.has_section('versions'):
+        print "versions.cfg doesn't have a [versions] section"
+        return
+    # *** NoSectionError: No section: 'versions'
+    # ('setuptools', '> 0.9.8'), ('raven', '4.0.4-gww.1'), ...
+    for module, version in versions.items('versions'):
+        repo = MLGR(os.path.join('src', module))
+        if not repo:
+            print 'no module {}'.format(module)
+        elif version not in repo.all_tags:
+            print 'tag {} not found in {}'.format(version, module)
+        elif version not in repo.top_tags:
+            print 'tag {} is not latest commit in {}'.format(version, module)
+        else:
+            print 'tag {} is latest in {} -- OK!'.format(version, module)
 
 
 @task
 @select_servers
 def make_eggs():
-
-    # read versions.cfg
-
-
-    for m in modules:
-        srcdir = os.path.join('src', m)
-        if not check_for_existing_tag(tag, repo=srcdir):
-            with lcd(srcdir):
-                #local('''sed -i.org 's/version = .*/version = "{}"/' setup.py'''.format(tag))
-                # XXX Modify version in setup.py if we intend jarn.mkrelease,
-                # and tag is like "1.1.5".  That only makes sense on a single
-                # module, not in this case.
-                # If tag is something like "sprint7", we dont' modify the
-                # module, just add a tag.
-                git_tag(tag)
-                print('Tagged git module {0} with tag {1}'.format(m, tag))
-
-    old_settings = 'prd-sources.cfg'
-    new_settings = 'prd-sources.cfg.new'
-
-    if not os.path.isfile(old_settings):
-        print(
-            '\nCannot set tags in prd-settings.cfg, add your git module '
-            '(ending with rev=dummy) to this config.'
-        )
-        raise
-
-    local('touch {}'.format(new_settings))
-
-    print('\nChanging tags in prd-settings.cfg, make sure your module is in prd-settings.cfg.')
-    with open(new_settings, 'wt') as fout:
-        with open(old_settings, 'rt') as fin:
-            for line in fin:
-                line = replace_tag(line, tag, modules)
-                fout.write(line)
-
-    local('cp {0} {0}.old'.format(old_settings))
-    local('mv {0} {1}'.format(new_settings, old_settings))
-
-    if not check_for_existing_tag(tag):
-        git_tag(tag)
-        print('Tagged buildout with tag {0}'.format(tag))
+    pass  # NYI
 

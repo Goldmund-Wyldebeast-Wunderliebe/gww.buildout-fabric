@@ -1,7 +1,8 @@
 import fabric
 from .check import check_cluster, test
 from .deploy import deploy, switch, copy
-from .modules import prepare_release
+from .modules import make_tags, check_eggs
+
 
 __all__ = [
         k for k,v in globals().items()

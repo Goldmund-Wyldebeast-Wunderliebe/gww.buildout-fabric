@@ -5,9 +5,9 @@ from StringIO import StringIO
 from fabric.api import env, local, run, settings
 
 
-def config_template(filename):
+def config_template(filename, **kwargs):
     appenv_info = env.deploy_info[env.appenv].copy()
-    appenv_info.update(appenv=env.appenv, now=datetime.now())
+    appenv_info.update(appenv=env.appenv, now=datetime.now(), **kwargs)
     jinja_env = Environment(loader=FileSystemLoader(['templates']))
     template = jinja_env.get_template(filename)
     text = template.render(appenv_info)

@@ -9,7 +9,7 @@ from fabric.contrib.files import exists
 from .helpers import select_servers, config_template, wget
 
 
-def do_deploy(tag=None, buildout_dir=None):
+def do_deploy(branch=None, tag=None, buildout_dir=None):
     appenv_info = env.deploy_info[env.appenv]
     if not buildout_dir:
         buildout_dir = appenv_info['buildout'] or 'buildout'
@@ -21,11 +21,14 @@ def do_deploy(tag=None, buildout_dir=None):
     if not exists(buildout_dir):
         run('git clone {0} {1}'.format(env.buildout_uri, buildout_dir))
     with cd(buildout_dir):
+        run('git fetch', warn_only=True)
+        if branch:
+            run('git checkout {}'.format(branch))
         run('git pull', warn_only=True)
         if tag:
             run('git checkout {}'.format(tag))
         config = 'buildout-{}.cfg'.format(env.appenv)
-        put(local_path=config_template('buildout-layer.cfg'),
+        put(local_path=config_template('buildout-layer.cfg', tag=tag),
                 remote_path=config)
         if not exists('bin/buildout'):
             run('~/bin/python bootstrap.py -c {}'.format(config))
