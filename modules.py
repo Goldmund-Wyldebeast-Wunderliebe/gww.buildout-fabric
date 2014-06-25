@@ -7,17 +7,29 @@ from fabric.api import env, local, lcd
 from fabric.decorators import task
 
 
-def replace_tag(tag, lines):
-    last = lines[-1]
-    if last.startswith('rev='):
-        lines[-1] = 'rev={}'.format(tag)
+def replace_tag(line, tag, modules):
+    """ add or replace a tag in a line for these modules.
+        for a line in prd-sources.txt, the first word is the module name,
+        if it's pinned, the last word is rev=xxx for tag xxx.
+        so, if the first word is not in modules, don't change anything.
+        If it is, if last word is rev=xxx, replace it, els add rev=tag.
+    """
+    words = line.split()
+    if not words or words[0] not in modules:
+        return line
+    if words[-1].startswith('rev='):
+        old_tag = words[-1].split('=',1)[1]
+        if old_tag == tag:
+            print('Git module {0} already pinned, skipping.')
+            return line
+        words[-1] = 'rev={}'.format(tag)
     else:
-        lines.append('rev={}'.format(tag))
-    lines.append('\n')
-    return ' '.join(lines)
-
+        words.append('rev={}'.format(tag))
+    return ' '.join(words) + '\n'
 
 def check_for_existing_tag(tag, repo='.'):
+    """ check if the tag is in the list of tags of that git repository.
+    """
     tags_output = local('( cd {} && git tag )'.format(repo), capture=True)
     return tag in tags_output.split()
 
@@ -72,7 +84,7 @@ def prepare_release(tag=None):
     old_settings = 'prd-sources.cfg'
     new_settings = 'prd-sources.cfg.new'
 
-    if not os.path.isfile(old_settings):    
+    if not os.path.isfile(old_settings):
         print(
             '\nCannot set tags in prd-settings.cfg, add your git module '
             '(ending with rev=dummy) to this config.'
@@ -85,15 +97,7 @@ def prepare_release(tag=None):
     with open(new_settings, 'wt') as fout:
         with open(old_settings, 'rt') as fin:
             for line in fin:
-                lines = line.split()
-
-                if tag in line:
-                    print('Git module {0} already pinned, skipping.')
-                    continue
-
-                if lines[0] in modules:
-                    line = replace_tag(tag, lines)
-
+                line = replace_tag(line, tag, modules)
                 fout.write(line)
 
     local('cp {0} {0}.old'.format(old_settings))

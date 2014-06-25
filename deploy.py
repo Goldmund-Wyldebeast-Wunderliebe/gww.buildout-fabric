@@ -9,31 +9,6 @@ from fabric.contrib.files import exists
 from .helpers import select_servers, config_template, wget
 
 
-def do_update(tag=None, buildout_dir=None):
-    appenv_info = env.deploy_info[env.appenv]
-    if not buildout_dir:
-        buildout_dir = appenv_info['buildout'] or 'buildout'
-
-    modules = appenv_info.get('modules')
-    instances = appenv_info.get('instances')
-    if not (modules and instances):
-        return
-
-    # git checkout/pull
-    for module, source in modules.items():
-        print 'Updating {}'.format(module)
-        with cd('{}/src/{}'.format(buildout_dir, module)):
-            run('git pull', warn_only=True)
-            if tag:
-                run('git checkout {}'.format(tag))
-    # restart
-    for instance, port in instances['ports'].items():
-        run('{}/bin/supervisorctl restart {}'.format(buildout_dir, instance))
-        print('Sleeping 5 seconds before continuing')
-        time.sleep(5)
-        wget('http://localhost:{}/{}/'.format(port, appenv_info['site_id']))
-
-
 def do_deploy(tag=None, buildout_dir=None):
     appenv_info = env.deploy_info[env.appenv]
     if not buildout_dir:
@@ -65,20 +40,26 @@ def do_switch(buildout_dir=None):
     if not buildout_dir:
         buildout_dir = appenv_info.get('buildout') or 'buildout'
 
+    # See if there's an old buildout that this one is replacing.
+    # If not, old_buildout is same as buildout_dir
     current_link = appenv_info.get('current_link')
+    old_buildout = None
     if current_link:
-        old_buildout = run("readlink current", warn_only=True)
+        old_buildout = run("readlink {}".format(current_link), warn_only=True)
+    if not old_buildout:
+        old_buildout= buildout_dir
 
-    if current_link and old_buildout:
-        # this is the hard case. stop stuff on old buildout, start it here.
-        # NB: old_buildout might be same as buildout_dir, if redeploying or
-        # updating today's buildout.
-        # Gracefully migrate instances from old to new
+    # If there's no supervisor running in old_buildout, things are easy.
+    if run('{}/bin/supervisorctl update'.format(old_buildout), warn_only=True):
+        # OK, not easy.  Stop stuff on old buildout, start it here.
+        # If old_buildout == buildout_dir, we're redeploying or updating
+        # today's buildout.
         services = run('{}/bin/supervisorctl status'.format(old_buildout))
         if old_buildout != buildout_dir:
+            # Start new supervisor.
             run('{}/bin/supervisord'.format(buildout_dir), warn_only=True)
-            print('Sleeping 15 seconds before continuing')
-            time.sleep(15)
+            time.sleep(1)
+        # Gracefully migrate services from old to new.
         for service in [s.split()[0] for s in services.split('\n')]:
             run('{}/bin/supervisorctl stop {}'.format(
                 old_buildout, service))
@@ -91,22 +72,18 @@ def do_switch(buildout_dir=None):
                 wget('http://localhost:{}/{}/'.format(
                     port, appenv_info['site_id']))
         if old_buildout != buildout_dir:
+            # Stop old supervisor.  It should be empty now.
             run('{}/bin/supervisorctl shutdown'.format(old_buildout))
         run('{}/bin/supervisorctl status'.format(buildout_dir))
 
-        if appenv_info.get('zeo',{}).get('base') and env.is_master:
-            # zeo not running from supervisor
-            run('{}/bin/zeo stop'.format(old_buildout))
-            run('{}/bin/zeo start'.format(buildout_dir))
-
     else:
-        # not current_link, so not timestamped. just (re)start everything.
-        # or first deploy on timestamped series. just start everything.
-        run('{0}/bin/supervisorctl reload || {0}/bin/supervisord'.format(
-            buildout_dir))
+        # Easy. Just start supervisor and be the hero of the day.
+        run('{}/bin/supervisord'.format(buildout_dir), warn_only=True)
+
+    if appenv_info.get('zeo',{}).get('base') and env.is_master:
         # zeo not running from supervisor
-        if appenv_info.get('zeo',{}).get('base') and env.is_master:
-            run('{}/bin/zeo restart'.format(buildout_dir))
+        run('{}/bin/zeo stop'.format(old_buildout), warn_only=True)
+        run('{}/bin/zeo start'.format(buildout_dir))
 
     if current_link:
         run('rm -f {}'.format(current_link))
@@ -115,9 +92,17 @@ def do_switch(buildout_dir=None):
     webserver = appenv_info.get('webserver')
     sitename = appenv_info.get('sitename')
     if webserver and sitename:
+        config = '~/sites-enabled/{}'.format(sitename)
+        config_tmp = os.path.join(buildout_dir, 'tmp-'+sitename)
         put(local_path=config_template('{}.conf'.format(webserver)),
-                remote_path='~/sites-enabled/{}'.format(sitename))
-        run('sudo /etc/init.d/{} reload'.format(webserver))
+                remote_path=config_tmp)
+        run("""
+            if cmp -s {config} {config_tmp}
+            then rm {config_tmp}
+            else mv {config_tmp} {config}
+                 sudo /etc/init.d/{webserver} reload
+            fi
+        """.format(config=config, config_tmp=config_tmp, webserver=webserver))
 
 
 def do_copy(buildout_dir=None):
@@ -135,7 +120,7 @@ def do_copy(buildout_dir=None):
     get(remote_path=os.path.join(zeo_base, 'filestorage', 'Data.fs'),
             local_path='var/filestorage/Data.fs')
     get(remote_path=os.path.join(zeo_base, 'blobstorage'),
-            local_path='var/blobstorage')
+            local_path='var/blobstorage')   # XXX rsync
 
 
 @task

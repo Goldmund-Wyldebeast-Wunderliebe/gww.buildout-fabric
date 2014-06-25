@@ -1,6 +1,6 @@
 import fabric
 from .check import check_cluster, test
-from .deploy import update, deploy, switch, copy
+from .deploy import deploy, switch, copy
 from .modules import prepare_release
 
 __all__ = [
