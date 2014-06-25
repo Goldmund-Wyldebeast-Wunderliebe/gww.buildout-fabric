@@ -1,7 +1,7 @@
 import fabric
 from .check import check_cluster, test
 from .deploy import deploy, switch, copy
-from .modules import make_tags, check_eggs
+from .modules import make_tag, check_versions
 
 
 __all__ = [

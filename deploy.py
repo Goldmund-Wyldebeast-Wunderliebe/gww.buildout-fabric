@@ -24,9 +24,10 @@ def do_deploy(branch=None, tag=None, buildout_dir=None):
         run('git fetch', warn_only=True)
         if branch:
             run('git checkout {}'.format(branch))
-        run('git pull', warn_only=True)
         if tag:
             run('git checkout {}'.format(tag))
+        else:
+            run('git pull', warn_only=True)
         config = 'buildout-{}.cfg'.format(env.appenv)
         put(local_path=config_template('buildout-layer.cfg', tag=tag),
                 remote_path=config)
@@ -53,7 +54,10 @@ def do_switch(buildout_dir=None):
         old_buildout= buildout_dir
 
     # If there's no supervisor running in old_buildout, things are easy.
-    if run('{}/bin/supervisorctl update'.format(old_buildout), warn_only=True):
+    if run('{}/bin/supervisorctl update'.format(old_buildout), warn_only=True).failed:
+        # Easy. Just start supervisor and be the hero of the day.
+        run('{}/bin/supervisord'.format(buildout_dir), warn_only=True)
+    else:
         # OK, not easy.  Stop stuff on old buildout, start it here.
         # If old_buildout == buildout_dir, we're redeploying or updating
         # today's buildout.
@@ -78,10 +82,6 @@ def do_switch(buildout_dir=None):
             # Stop old supervisor.  It should be empty now.
             run('{}/bin/supervisorctl shutdown'.format(old_buildout))
         run('{}/bin/supervisorctl status'.format(buildout_dir))
-
-    else:
-        # Easy. Just start supervisor and be the hero of the day.
-        run('{}/bin/supervisord'.format(buildout_dir), warn_only=True)
 
     if appenv_info.get('zeo',{}).get('base') and env.is_master:
         # zeo not running from supervisor

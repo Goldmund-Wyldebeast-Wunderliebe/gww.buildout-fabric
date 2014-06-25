@@ -36,16 +36,19 @@ class MLGR(object):
         self.is_repo = os.path.isdir(os.path.join(repo, '.git'))
         if not self.is_repo:
             return
-        self.all_tags = self.git_command('tag').split()
-        self.top_tags = [name
+        self.all_tags = set(self.git_command('tag').split())
+        self.top_tags = set(name
                 for name in self.tag_pattern.findall(self.git_command(
                     'log', '-n1', '--pretty=format:%d'))
-                if name in self.all_tags]
+                if name in self.all_tags)
+        self.old_tags = self.all_tags - self.top_tags
 
     def __nonzero__(self):
         return self.is_repo
 
-    def add_tag(repo, tag, comment=None):
+    def add_tag(self, tag, comment=None):
+        if tag in self.top_tags:
+            return
         self.git_command('tag', tag, '-m', comment or '')
         self.git_command('push', '--tags')
 
@@ -61,15 +64,9 @@ class MLGR(object):
 
 def try_and_tag_all(tag, repositories, comment=None):
     """ returns list of conflicting modules if not succesful """
-    repos_with_this_tag = []
-    repos_with_conflict = []
-    for repo in repositories:
-        if tag in repo.top_tags:
-            repos_with_conflict.append(repo)
-        elif tag in repo.all_tags:
-            repos_with_this_tag.append(repo)
-    if repos_with_conflict:
-        return repos_with_conflict
+    conflicts = [repo for repo in repositories if tag in repo.old_tags]
+    if conflicts:
+        return conflicts
     for repo in repositories:
         repo.add_tag(tag, comment=comment)
     return None
@@ -85,7 +82,7 @@ def invent_tag():
 
 @task
 @select_servers
-def make_tags(tag=None, comment=None):
+def make_tag(tag=None, comment=None):
     """ Git tag all modules and buildout """
     appenv_info = env.deploy_info[env.appenv]
     modules = appenv_info.get('modules')
@@ -94,11 +91,8 @@ def make_tags(tag=None, comment=None):
 
     if tag:
         conflicts = try_and_tag_all(tag, repositories, comment=comment)
-        if conflicts:
-            print("Conflict for tag {} in module {}".format(
-                tag, ", ".join(conflicts)))
-            ERROR
-        break
+        assert not conflicts, "Conflict for tag {} in module {}".format(
+                tag, ", ".join(map(str, conflicts)))
     else:
         for tag in invent_tag():
             conflicts = try_and_tag_all(tag, repositories, comment=comment)
@@ -120,7 +114,7 @@ def check_versions():
     for module, version in versions.items('versions'):
         repo = MLGR(os.path.join('src', module))
         if not repo:
-            print 'no module {}'.format(module)
+            pass  # 'no module {}'.format(module)
         elif version not in repo.all_tags:
             print 'tag {} not found in {}'.format(version, module)
         elif version not in repo.top_tags:
