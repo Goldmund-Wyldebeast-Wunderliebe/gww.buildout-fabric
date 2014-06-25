@@ -125,12 +125,6 @@ def do_copy(buildout_dir=None):
 
 @task
 @select_servers
-def update(*args, **kwargs):
-    """ Git pull modules in env.modules and restart instances """
-    do_update(*args, **kwargs)
-
-@task
-@select_servers
 def deploy(*args, **kwargs):
     """ Create new buildout in release dir """
     do_deploy(*args, **kwargs)

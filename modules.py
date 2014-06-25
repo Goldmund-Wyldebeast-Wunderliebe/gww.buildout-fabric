@@ -1,72 +1,96 @@
 """ Specific Fabric tasks """
 
-from datetime import datetime
 import os
+from datetime import datetime
+import itertools
 
 from fabric.api import env, local, lcd
 from fabric.decorators import task
 
 
-def replace_tag(line, tag, modules):
-    """ add or replace a tag in a line for these modules.
-        for a line in prd-sources.txt, the first word is the module name,
-        if it's pinned, the last word is rev=xxx for tag xxx.
-        so, if the first word is not in modules, don't change anything.
-        If it is, if last word is rev=xxx, replace it, els add rev=tag.
-    """
-    words = line.split()
-    if not words or words[0] not in modules:
-        return line
-    if words[-1].startswith('rev='):
-        old_tag = words[-1].split('=',1)[1]
-        if old_tag == tag:
-            print('Git module {0} already pinned, skipping.')
-            return line
-        words[-1] = 'rev={}'.format(tag)
-    else:
-        words.append('rev={}'.format(tag))
-    return ' '.join(words) + '\n'
+"""
+Two workflows for getting modules to the remote (tst/acc/prd) buildout.
 
-def check_for_existing_tag(tag, repo='.'):
-    """ check if the tag is in the list of tags of that git repository.
-    """
-    tags_output = local('( cd {} && git tag )'.format(repo), capture=True)
-    return tag in tags_output.split()
+    A:  Use mr.developer to git checkout. Individual modules and the buildout
+        will be tagged, and the tag will be in the [sources] section of the
+        generated buildout-xxx.cfg.  If the tag already exists and is different
+        from the (local) checked-out version, we refuse.
+
+    B:  Use eggs. For each module in versions.cfg that's checked out here, we
+        verify that the version is up-to-date: a corresponding tag should exist
+        and be the checked-out version.
+        Use jarn.mkrelease to make/distribute/tag.
+
+"""
 
 
+def git_command(repo, command):
+    return local('( cd {} && git {} )'.format(repo, command), capture=True)
 
-################
-# Basic tasks
-################
+def current_tags(repo):
+    return git_command(repo, 'tag').split()
+
+def git_add_tag(repo, tag, comment=None):
+    git_command(repo, 'tag {} -m "{}"'.format(tag, comment or ''))
+    git_command(repo, 'push --tags')
+
+def git_hash(repo, tag=''):
+    return git_command(repo, 'log -n1 --pretty=format:%h {}'.format(tag))
+
+def try_and_tag_all(tag, repositories, comment=None):
+    """ returns list of conflicting modules if not succesful """
+    repos_with_this_tag = []
+    repos_with_conflict = []
+    for repo in repositories:
+        if tag in current_tags(repo):
+            repos_with_this_tag.append(repo)
+            if git_hash(repo) != git_hash(repo, tag):
+                repos_with_conflict.append(repo)
+    if repos_with_conflict:
+        return repos_with_conflict
+    for repo in repositories:
+        if repo in repos_with_this_tag:
+            continue
+        git_add_tag(repo, tag, comment=comment)
+    return None
+
+def invent_tag():
+    appenv_info = env.deploy_info[env.appenv]
+    tag_format = appenv_info.get('tag_format', env.appenv + '-%Y%m%d')
+    now = datetime.now()
+    for x in itertools.count():
+        suffix = '-%d' % x if x else ''
+        yield now.strftime(tag_format) + suffix
+
 
 @task
-def prepare_release(tag=None):
-    """ Git tag all modules in env.modules, pin tags in prd-sources.cfg and tag buildout """
+@select_servers
+def make_tags(tag=None, comment=None):
+    """ Git tag all modules and buildout """
+    appenv_info = env.deploy_info[env.appenv]
+    modules = appenv_info.get('modules')
+    repositories = ['.'] + ['src/'+m for m in modules]
 
-    if not tag:
-        now = datetime.now()
-        tag = '{}-{}'.format(env.appenv, now.strftime('%Y-%m-%d'))
+    if tag:
+        conflicts = try_and_tag_all(tag, repositories, comment=comment)
+        if conflicts:
+            print("Conflict for tag {} in module {}".format(
+                tag, ", ".join(conflicts)))
+            ERROR
+        return tag
+    else:
+        for tag in invent_tag():
+            conflicts = try_and_tag_all(tag, repositories, comment=comment)
+            if not conflicts:
+                return tag
 
-    def git_tag(tag):
-        # XXX why commit? and why tag -f?
-        local('git commit -am "tagging production release"')
-        local('git tag -af {} -m "tagged production release"'.format(tag))
-        local('git push --tags -f')
-        local('git push')
 
-    modules = env.modules
+@task
+@select_servers
+def make_eggs():
 
-    existing_tag = False
-    if check_for_existing_tag(tag):
-        print('Buildout already tagged with tag {0}'.format(tag))
-        existing_tag = True
-    for m in modules:
-        srcdir = os.path.join('src', m)
-        if check_for_existing_tag(tag, repo=srcdir):
-            print('Git module {0} already tagged with tag {1}'.format(m, tag))
-            existing_tag = True
-    if existing_tag:
-        return  # don't reuse tag
+    # read versions.cfg
+
 
     for m in modules:
         srcdir = os.path.join('src', m)
