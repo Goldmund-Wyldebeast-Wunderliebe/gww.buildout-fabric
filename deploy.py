@@ -3,7 +3,7 @@
 import time
 import os
 
-from fabric.api import cd, env, local, run, get, put
+from fabric.api import cd, env, local, run, get, put, open_shell
 from fabric.decorators import task
 from fabric.contrib.files import exists
 from .helpers import select_servers, config_template, wget
@@ -53,6 +53,10 @@ def do_switch(buildout_dir=None):
     if not old_buildout:
         old_buildout= buildout_dir
 
+    if current_link:
+        run('rm -f {}'.format(current_link))
+        run('ln -s {} {}'.format(buildout_dir, current_link))
+
     # If there's no supervisor running in old_buildout, things are easy.
     if run('{}/bin/supervisorctl update'.format(old_buildout), warn_only=True).failed:
         # Easy. Just start supervisor and be the hero of the day.
@@ -67,17 +71,19 @@ def do_switch(buildout_dir=None):
             run('{}/bin/supervisord'.format(buildout_dir), warn_only=True)
             time.sleep(1)
         # Gracefully migrate services from old to new.
-        for service in [s.split()[0] for s in services.split('\n')]:
+        for service in [s.split()[0] for s in services.split('\n') if s]:
             run('{}/bin/supervisorctl stop {}'.format(
                 old_buildout, service))
             run('{}/bin/supervisorctl start {}'.format(
                 buildout_dir, service))
-            port = appenv_info['instances']['ports'].get(service)
-            if port:
+            try:
+                port = appenv_info['instances']['ports'][service]
                 print('Sleeping 5 seconds before continuing')
                 time.sleep(5)
                 wget('http://localhost:{}/{}/'.format(
                     port, appenv_info['site_id']))
+            except KeyError:
+                pass
         if old_buildout != buildout_dir:
             # Stop old supervisor.  It should be empty now.
             run('{}/bin/supervisorctl shutdown'.format(old_buildout))
@@ -87,10 +93,6 @@ def do_switch(buildout_dir=None):
         # zeo not running from supervisor
         run('{}/bin/zeo stop'.format(old_buildout), warn_only=True)
         run('{}/bin/zeo start'.format(buildout_dir))
-
-    if current_link:
-        run('rm -f {}'.format(current_link))
-        run('ln -s {} {}'.format(buildout_dir, current_link))
 
     webserver = appenv_info.get('webserver')
     sitename = appenv_info.get('sitename')
@@ -143,4 +145,18 @@ def switch(*args, **kwargs):
 def copy(*args, **kwargs):
     """ Copy database from server """
     do_copy(*args, **kwargs)
+
+@task
+@select_servers
+def shell(buildout_dir=None):
+    """ Execute some commands on server """
+    appenv_info = env.deploy_info[env.appenv]
+    if not buildout_dir:
+        current_link = appenv_info.get('current_link')
+        if current_link:
+            buildout_dir = run("readlink {}".format(current_link), warn_only=True)
+        if not buildout_dir:
+            buildout_dir = appenv_info.get('buildout') or 'buildout'
+
+    open_shell("cd {}".format(buildout_dir))
 
