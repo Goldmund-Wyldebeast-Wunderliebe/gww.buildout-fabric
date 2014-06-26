@@ -2,6 +2,7 @@
 
 import os
 import re
+import subprocess
 from datetime import datetime
 import itertools
 
@@ -53,10 +54,16 @@ class MLGR(object):
         self.git_command('push', '--tags')
 
     def git_command(self, *command):
-        return local(
-                '( cd "{}" && git {} )'.format(
-                    self.repo, " ".join('"%s"'%a for a in command)),
-                capture=True)
+        cmd = subprocess.Popen(
+                ['git'] + list(command),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                bufsize=-1,
+                cwd=self.repo)
+        stdout, stderr = cmd.communicate()
+        assert cmd.returncode == 0, "git command '{}' failed.\n{}".format(
+                ' '.join(command), stderr)
+        return stdout
 
     def __repr__(self):
         return self.repo
