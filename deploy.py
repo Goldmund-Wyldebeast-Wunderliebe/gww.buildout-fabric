@@ -2,6 +2,7 @@
 
 import time
 import os
+from StringIO import StringIO
 
 from fabric.api import cd, env, local, run, get, put, open_shell
 from fabric.decorators import task
@@ -29,8 +30,8 @@ def do_deploy(branch=None, tag=None, buildout_dir=None):
         else:
             run('git pull', warn_only=True)
         config = 'buildout-{}.cfg'.format(env.appenv)
-        put(local_path=config_template('buildout-layer.cfg', tag=tag),
-                remote_path=config)
+        config_text = config_template('buildout-layer.cfg', tag=tag)
+        put(local_path=StringIO(config_text), remote_path=config)
         if not exists('bin/buildout'):
             run('~/bin/python bootstrap.py -c {}'.format(config))
         run('./bin/buildout -c {}'.format(config))
@@ -97,17 +98,16 @@ def do_switch(buildout_dir=None):
     webserver = appenv_info.get('webserver')
     sitename = appenv_info.get('sitename')
     if webserver and sitename:
-        config = '~/sites-enabled/{}'.format(sitename)
-        config_tmp = os.path.join(buildout_dir, 'tmp-'+sitename)
-        put(local_path=config_template('{}.conf'.format(webserver)),
-                remote_path=config_tmp)
-        run("""
-            if cmp -s {config} {config_tmp}
-            then rm {config_tmp}
-            else mv {config_tmp} {config}
-                 sudo /etc/init.d/{webserver} reload
-            fi
-        """.format(config=config, config_tmp=config_tmp, webserver=webserver))
+        config = 'sites-enabled/{}'.format(sitename)
+        config_text = config_template('{}.conf'.format(webserver))
+        if exists(config):
+            buf = StringIO()
+            get(local_path=buf, remote_path=config)
+            if buf.getvalue() == config_text:
+                return  # whambamthankyoumam
+        run('mkdir -p sites-enabled')
+        put(local_path=StringIO(config_text)remote_path=config)
+        run('sudo /etc/init.d/{} reload'.format(webserver)
 
 
 def do_copy(buildout_dir=None):

@@ -1,7 +1,6 @@
 import time
 from datetime import datetime
 from jinja2 import Environment, FileSystemLoader
-from StringIO import StringIO
 from fabric.api import env, local, run, settings
 
 
@@ -10,8 +9,7 @@ def config_template(filename, **kwargs):
     appenv_info.update(appenv=env.appenv, now=datetime.now(), **kwargs)
     jinja_env = Environment(loader=FileSystemLoader(['templates']))
     template = jinja_env.get_template(filename)
-    text = template.render(appenv_info)
-    return StringIO(text)
+    return template.render(appenv_info)
 
 
 def wget(url, retry=4, sleep=30):
