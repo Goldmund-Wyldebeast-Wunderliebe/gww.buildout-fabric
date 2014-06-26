@@ -106,8 +106,8 @@ def do_switch(buildout_dir=None):
             if buf.getvalue() == config_text:
                 return  # whambamthankyoumam
         run('mkdir -p sites-enabled')
-        put(local_path=StringIO(config_text)remote_path=config)
-        run('sudo /etc/init.d/{} reload'.format(webserver)
+        put(local_path=StringIO(config_text), remote_path=config)
+        run('sudo /etc/init.d/{} reload'.format(webserver))
 
 
 def do_copy(buildout_dir=None):
