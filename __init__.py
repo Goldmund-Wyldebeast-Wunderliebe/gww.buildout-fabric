@@ -1,6 +1,6 @@
 import fabric
 from .check import check_cluster, test
-from .deploy import deploy, switch, copy, shell
+from .deploy import deploy, switch, copy, shell, hatop
 from .modules import make_tag, check_versions
 
 

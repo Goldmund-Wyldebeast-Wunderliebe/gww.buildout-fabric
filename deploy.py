@@ -160,3 +160,22 @@ def shell(buildout_dir=None):
 
     open_shell("cd {}".format(buildout_dir))
 
+@task
+@select_servers
+def hatop(buildout_dir=None):
+    appenv_info = env.deploy_info[env.appenv]
+    if not env.is_master:
+        print env.host_string, 'not master'
+        return
+    if 'haproxy' not in appenv_info:
+        print 'haproxy not in', appenv_info.keys()
+        return
+    print 'yes'
+    if not buildout_dir:
+        current_link = appenv_info.get('current_link')
+        if current_link:
+            buildout_dir = run("readlink {}".format(current_link), warn_only=True)
+        if not buildout_dir:
+            buildout_dir = appenv_info.get('buildout') or 'buildout'
+    open_shell('cd {} && exec /usr/bin/python ./hatop -s var/run/haproxy-socket'.format(buildout_dir))
+
