@@ -99,7 +99,8 @@ def do_switch(buildout_dir=None):
     sitename = appenv_info.get('sitename')
     if webserver and sitename:
         config = 'sites-enabled/{}'.format(sitename)
-        config_text = config_template('{}.conf'.format(webserver))
+        home_dir = run('echo $HOME')  # TODO: move to a more logical place?
+        config_text = config_template('{}.conf'.format(webserver), home_dir=home_dir)
         if exists(config):
             buf = StringIO()
             get(local_path=buf, remote_path=config)
