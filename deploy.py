@@ -32,6 +32,7 @@ def do_deploy(branch=None, tag=None, buildout_dir=None):
         config = 'buildout-{}.cfg'.format(env.appenv)
         config_text = config_template('buildout-layer.cfg', tag=tag)
         put(local_path=StringIO(config_text), remote_path=config)
+        run("git submodule init && git submodule update")
         if not exists('bin/buildout'):
             run('~/bin/python bootstrap.py -c {}'.format(config))
         run('./bin/buildout -c {}'.format(config))
