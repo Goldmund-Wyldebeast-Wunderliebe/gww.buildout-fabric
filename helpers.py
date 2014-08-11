@@ -6,7 +6,7 @@ from fabric.api import env, local, run, settings
 
 def config_template(filename, **kwargs):
     appenv_info = env.deploy_info[env.appenv].copy()
-    appenv_info.update(appenv=env.appenv, now=datetime.now(), **kwargs)
+    appenv_info.update(env=env.app, appenv=env.appenv, now=datetime.now(), **kwargs)
     templates = env.deploy_info.get('templates', ['templates'])
     jinja_env = Environment(loader=FileSystemLoader(templates))
     template = jinja_env.get_template(filename)
