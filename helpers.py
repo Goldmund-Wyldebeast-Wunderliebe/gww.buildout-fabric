@@ -1,7 +1,11 @@
 import time
 from datetime import datetime
 from jinja2 import Environment, FileSystemLoader
-from fabric.api import env, local, run, settings
+from fabric.api import env, local, run, settings, get
+from fabric.contrib.files import exists
+import os
+import StringIO
+from ConfigParser import ConfigParser
 
 
 def config_template(filename, **kwargs):
@@ -73,3 +77,24 @@ def get_master_slave(hosts, quiet=True):
         raise ValueError(u'No master/slave server setup found!')
 
     return cluster
+
+def pick_clockusers():
+    """ Grab configuration file for clock users """
+
+    appenv_info = env.deploy_info[env.appenv]
+    buildout_dir = appenv_info['buildout'] or 'buildout'
+    config_file = StringIO.StringIO()
+    #command may be called from the scope of right folder
+    if exists('clockuser.cfg'):
+        get('clockuser.cfg', local_path=config_file)
+    elif exists(os.path.join(buildout_dir, 'clockuser.cfg')):
+        get(os.path.join(buildout_dir, 'clockuser.cfg'), local_path=config_file)
+    else:
+        return {}    
+    config_file.seek(0)
+    config = ConfigParser()
+    config.readfp(config_file)
+    result = {}
+    for section in config.sections():
+        result[section] = dict(config.items(section))
+    return result    

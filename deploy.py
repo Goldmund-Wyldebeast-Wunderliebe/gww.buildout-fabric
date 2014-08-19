@@ -7,7 +7,7 @@ from StringIO import StringIO
 from fabric.api import cd, env, local, run, get, put, open_shell
 from fabric.decorators import task
 from fabric.contrib.files import exists
-from .helpers import select_servers, config_template, wget
+from .helpers import select_servers, config_template, wget, pick_clockusers
 
 
 def do_deploy(branch=None, tag=None, buildout_dir=None):
@@ -30,7 +30,8 @@ def do_deploy(branch=None, tag=None, buildout_dir=None):
         else:
             run('git pull', warn_only=True)
         config = 'buildout-{}.cfg'.format(env.appenv)
-        config_text = config_template('buildout-layer.cfg', tag=tag)
+        clockusers = pick_clockusers()
+        config_text = config_template('buildout-layer.cfg', tag=tag, clockusers=clockusers)
         put(local_path=StringIO(config_text), remote_path=config)
         run("git submodule init && git submodule update")
         if not exists('bin/buildout'):
