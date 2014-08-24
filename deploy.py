@@ -7,11 +7,11 @@ from StringIO import StringIO
 from fabric.api import cd, env, local, run, get, put, open_shell
 from fabric.decorators import task
 from fabric.contrib.files import exists
-from .helpers import select_servers, config_template, wget, pick_clockusers
+from .helpers import config_template, read_remote_config_files, select_servers, wget
 
 
 def do_deploy(branch=None, tag=None, buildout_dir=None):
-    appenv_info = env.deploy_info[env.appenv]
+    appenv_info = env.deploy_info[env.appenv].copy()
     if not buildout_dir:
         buildout_dir = appenv_info['buildout'] or 'buildout'
 
@@ -22,16 +22,18 @@ def do_deploy(branch=None, tag=None, buildout_dir=None):
     if not exists(buildout_dir):
         run('git clone {0} {1}'.format(env.buildout_uri, buildout_dir))
     with cd(buildout_dir):
+        run('git status')
         run('git fetch', warn_only=True)
         if branch:
             run('git checkout {}'.format(branch))
         if tag:
             run('git checkout {}'.format(tag))
+            appenv_info['tag'] = tag
         else:
             run('git pull', warn_only=True)
+        read_remote_config_files(appenv_info)
         config = 'buildout-{}.cfg'.format(env.appenv)
-        clockusers = pick_clockusers()
-        config_text = config_template('buildout-layer.cfg', tag=tag, clockusers=clockusers)
+        config_text = config_template('buildout-layer.cfg', appenv_info)
         put(local_path=StringIO(config_text), remote_path=config)
         run("git submodule init && git submodule update")
         if not exists('bin/buildout'):
@@ -102,7 +104,8 @@ def do_switch(buildout_dir=None):
     if webserver and sitename:
         config = 'sites-enabled/{}'.format(sitename)
         home_dir = run('echo $HOME')  # TODO: move to a more logical place?
-        config_text = config_template('{}.conf'.format(webserver), home_dir=home_dir)
+        appenv_info['home_dir'] = home_dir
+        config_text = config_template('{}.conf'.format(webserver), appenv_info)
         if exists(config):
             buf = StringIO()
             get(local_path=buf, remote_path=config)

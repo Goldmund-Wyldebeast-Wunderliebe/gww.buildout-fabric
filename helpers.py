@@ -8,13 +8,31 @@ import StringIO
 from ConfigParser import ConfigParser
 
 
-def config_template(filename, **kwargs):
-    appenv_info = env.deploy_info[env.appenv].copy()
-    appenv_info.update(env=env.app, appenv=env.appenv, now=datetime.now(), **kwargs)
+def config_template(filename, appenv_info):
+    appenv_info.update(env=env.app, appenv=env.appenv, now=datetime.now())
     templates = env.deploy_info.get('templates', ['templates'])
     jinja_env = Environment(loader=FileSystemLoader(templates))
     template = jinja_env.get_template(filename)
     return template.render(appenv_info)
+
+def read_remote_config_files(appenv_info):
+    """ Grab configuration files from remote host """
+    config_map = appenv_info.get('remote_configs')
+    if not config_map:
+        return {}
+    for config_name, file_name in config_map.items():
+        if not exists(file_name):
+            continue
+        run('ls -l ' + file_name)
+        config_file = StringIO.StringIO()
+        get('clockuser.cfg', local_path=config_file)
+        config_file.seek(0)
+        config = ConfigParser()
+        config.readfp(config_file)
+        result = {}
+        for section in config.sections():
+            result[section] = dict(config.items(section))
+        appenv_info[config_name] = result
 
 
 def wget(url, retry=4, sleep=30):
@@ -78,23 +96,3 @@ def get_master_slave(hosts, quiet=True):
 
     return cluster
 
-def pick_clockusers():
-    """ Grab configuration file for clock users """
-
-    appenv_info = env.deploy_info[env.appenv]
-    buildout_dir = appenv_info['buildout'] or 'buildout'
-    config_file = StringIO.StringIO()
-    #command may be called from the scope of right folder
-    if exists('clockuser.cfg'):
-        get('clockuser.cfg', local_path=config_file)
-    elif exists(os.path.join(buildout_dir, 'clockuser.cfg')):
-        get(os.path.join(buildout_dir, 'clockuser.cfg'), local_path=config_file)
-    else:
-        return {}    
-    config_file.seek(0)
-    config = ConfigParser()
-    config.readfp(config_file)
-    result = {}
-    for section in config.sections():
-        result[section] = dict(config.items(section))
-    return result    
